@@ -215,9 +215,11 @@ function refreshProjectRoutes(projectId?: string) {
   revalidatePath(`/projects/${projectId}/characters`);
   revalidatePath(`/projects/${projectId}/locations`);
   revalidatePath(`/projects/${projectId}/events`);
+  revalidatePath(`/projects/${projectId}/timeline`);
   revalidatePath("/characters");
   revalidatePath("/locations");
   revalidatePath("/events");
+  revalidatePath("/timeline");
 }
 
 export async function createProjectAction(
@@ -742,4 +744,101 @@ export async function deleteEventAction(formData: FormData) {
   await prisma.event.delete({ where: { id: eventId } });
   refreshProjectRoutes(projectId);
   redirect(redirectTo);
+}
+
+export async function assignCharacterToEventAction(input: {
+  projectId: string;
+  eventId: string;
+  characterId: string;
+}) {
+  const user = await requireCurrentUser();
+
+  const event = await prisma.event.findFirst({
+    where: {
+      id: input.eventId,
+      projectId: input.projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!event) {
+    throw new Error("No encontramos ese evento dentro de tu proyecto.");
+  }
+
+  const character = await prisma.character.findFirst({
+    where: {
+      id: input.characterId,
+      projectId: input.projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!character) {
+    throw new Error("No encontramos ese personaje dentro de tu proyecto.");
+  }
+
+  await prisma.eventCharacter.upsert({
+    where: {
+      eventId_characterId: {
+        eventId: input.eventId,
+        characterId: input.characterId,
+      },
+    },
+    update: {},
+    create: {
+      eventId: input.eventId,
+      characterId: input.characterId,
+    },
+  });
+
+  refreshProjectRoutes(input.projectId);
+}
+
+export async function removeCharacterFromEventAction(input: {
+  projectId: string;
+  eventId: string;
+  characterId: string;
+}) {
+  const user = await requireCurrentUser();
+
+  const link = await prisma.eventCharacter.findFirst({
+    where: {
+      eventId: input.eventId,
+      characterId: input.characterId,
+      event: {
+        projectId: input.projectId,
+        project: {
+          ownerId: user.id,
+        },
+      },
+      character: {
+        projectId: input.projectId,
+      },
+    },
+    select: {
+      eventId: true,
+      characterId: true,
+    },
+  });
+
+  if (!link) {
+    return;
+  }
+
+  await prisma.eventCharacter.delete({
+    where: {
+      eventId_characterId: {
+        eventId: input.eventId,
+        characterId: input.characterId,
+      },
+    },
+  });
+
+  refreshProjectRoutes(input.projectId);
 }

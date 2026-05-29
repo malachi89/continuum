@@ -22,7 +22,7 @@ export function ProjectRoutePicker({
 }: {
   title: string;
   description: string;
-  routeSuffix: "/characters" | "/locations" | "/events";
+  routeSuffix: "/characters" | "/locations" | "/events" | "/timeline";
   projects: ProjectSummary[];
 }) {
   if (projects.length === 0) {

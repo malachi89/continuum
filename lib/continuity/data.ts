@@ -96,3 +96,79 @@ export async function getOwnedProjectEvents(projectId: string) {
     },
   });
 }
+
+export async function getOwnedProjectTimeline(projectId: string) {
+  const [project, characters, locations, events] = await Promise.all([
+    getOwnedProject(projectId),
+    getOwnedProjectCharacters(projectId),
+    getOwnedProjectLocations(projectId),
+    getOwnedProjectEvents(projectId),
+  ]);
+
+  return {
+    project,
+    characters,
+    locations,
+    events,
+  };
+}
+
+export async function getOwnedCharacterTimeline(projectId: string, characterId: string) {
+  const user = await requireCurrentUser();
+
+  const character = await prisma.character.findFirst({
+    where: {
+      id: characterId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    include: {
+      project: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+        },
+      },
+    },
+  });
+
+  if (!character) {
+    notFound();
+  }
+
+  const events = await prisma.event.findMany({
+    where: {
+      projectId,
+      characters: {
+        some: {
+          characterId,
+        },
+      },
+    },
+    orderBy: {
+      internalStart: "asc",
+    },
+    include: {
+      startLocation: true,
+      endLocation: true,
+      characters: {
+        include: {
+          character: true,
+        },
+        orderBy: {
+          character: {
+            name: "asc",
+          },
+        },
+      },
+    },
+  });
+
+  return {
+    character,
+    events,
+  };
+}

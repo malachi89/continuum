@@ -16,7 +16,10 @@ export function ProjectWorkspaceNav({
     <nav className="flex flex-wrap gap-2">
       {projectSectionLinks.map((item) => {
         const href = `/projects/${projectId}${item.href}`;
-        const active = currentPath === href;
+        const active =
+          item.href === ""
+            ? currentPath === href
+            : currentPath === href || currentPath.startsWith(`${href}/`);
 
         return (
           <Link

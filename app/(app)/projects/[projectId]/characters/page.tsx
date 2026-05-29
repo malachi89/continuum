@@ -1,7 +1,9 @@
 import { createCharacterAction, deleteCharacterAction, updateCharacterAction } from "@/app/(app)/projects/actions";
+import Link from "next/link";
 import { CharacterForm } from "@/components/forms/CharacterForm";
 import { DeleteResourceForm } from "@/components/forms/DeleteResourceForm";
 import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getOwnedProject, getOwnedProjectCharacters } from "@/lib/continuity/data";
 
@@ -60,6 +62,12 @@ export default async function ProjectCharactersPage({
                   {character.maxTravelMode ? <Badge tone="accent">{character.maxTravelMode}</Badge> : null}
                   {character.maxSpeedKmh ? <Badge tone="success">{character.maxSpeedKmh} km/h</Badge> : null}
                 </div>
+              </div>
+
+              <div className="mt-4">
+                <Link href={`/projects/${projectId}/characters/${character.id}`}>
+                  <Button variant="secondary">Ver tracking individual</Button>
+                </Link>
               </div>
 
               <div className="mt-5">
