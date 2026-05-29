@@ -7,8 +7,16 @@ import { useState } from "react";
 import clsx from "clsx";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { navigationItems } from "@/lib/continuity/navigation";
+import type { CurrentUser } from "@/lib/auth/current-user";
+import { LogoutButton } from "@/components/LogoutButton";
 
-export function AppShell({ children }: { children: React.ReactNode }) {
+export function AppShell({
+  children,
+  currentUser,
+}: {
+  children: React.ReactNode;
+  currentUser: CurrentUser;
+}) {
   const pathname = usePathname();
   const { language, setLanguage, t } = useLanguage();
   const [isNavOpen, setIsNavOpen] = useState(false);
@@ -118,6 +126,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <span>{language.toUpperCase()}</span>
             </div>
           </header>
+
+          <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 md:px-8">
+            <div>
+              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                {t("account")}
+              </p>
+              <p className="mt-1 text-sm font-medium text-ink">
+                {currentUser.name} · {currentUser.email}
+              </p>
+            </div>
+            <LogoutButton />
+          </div>
 
           <main className="flex-1 px-5 py-6 md:px-8 md:py-8">{children}</main>
         </div>

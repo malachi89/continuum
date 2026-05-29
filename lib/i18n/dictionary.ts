@@ -4,6 +4,7 @@ export const defaultLanguage: Language = "es";
 
 export const dictionary = {
   es: {
+    account: "Cuenta",
     analysis: "Analisis",
     analysisDescription: "Cruces, banderas de continuidad y chequeos editoriales.",
     bootstrapReady: "Base tecnica lista para crecer",
@@ -30,6 +31,7 @@ export const dictionary = {
     modules: "Modulos",
     openMenu: "Abrir menu",
     openProjects: "Abrir proyectos",
+    pleaseWait: "Espera un momento...",
     projects: "Proyectos",
     projectsDescription: "Configura universos, series o clientes con sus reglas base.",
     shellCardBody:
@@ -40,12 +42,14 @@ export const dictionary = {
     stackCardBody:
       "Next.js, TypeScript, Tailwind, Prisma, SQLite y Vitest quedaron conectados desde el primer paso.",
     stackCardTitle: "Stack preparado",
+    signOut: "Salir",
     timeline: "Timeline",
     timelineDescription: "Visualiza secuencias, orden temporal y conflictos de canon.",
     workspace: "Workspace",
     workspaceName: "Continuity Tracker / Bootstrap",
   },
   en: {
+    account: "Account",
     analysis: "Analysis",
     analysisDescription: "Cross-checks, continuity flags, and editorial validation.",
     bootstrapReady: "Technical foundation ready to grow",
@@ -72,6 +76,7 @@ export const dictionary = {
     modules: "Modules",
     openMenu: "Open menu",
     openProjects: "Open projects",
+    pleaseWait: "Please wait...",
     projects: "Projects",
     projectsDescription: "Configure universes, series, or clients with base rules.",
     shellCardBody:
@@ -82,6 +87,7 @@ export const dictionary = {
     stackCardBody:
       "Next.js, TypeScript, Tailwind, Prisma, SQLite, and Vitest are wired in from the first step.",
     stackCardTitle: "Prepared stack",
+    signOut: "Sign out",
     timeline: "Timeline",
     timelineDescription: "Visualize sequences, time order, and canon conflicts.",
     workspace: "Workspace",

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
-import { AppShell } from "@/components/AppShell";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 
 const manrope = Manrope({
@@ -32,9 +31,7 @@ export default function RootLayout({
       className={`${manrope.variable} ${plexMono.variable} h-full`}
     >
       <body className="min-h-full bg-canvas text-ink antialiased">
-        <LanguageProvider>
-          <AppShell>{children}</AppShell>
-        </LanguageProvider>
+        <LanguageProvider>{children}</LanguageProvider>
       </body>
     </html>
   );
