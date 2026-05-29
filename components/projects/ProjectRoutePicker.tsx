@@ -27,7 +27,8 @@ export function ProjectRoutePicker({
     | "/locations"
     | "/events"
     | "/timeline"
-    | "/analysis";
+    | "/analysis"
+    | "/import-export";
   projects: ProjectSummary[];
 }) {
   if (projects.length === 0) {

@@ -100,4 +100,47 @@ describe("continuity analysis", () => {
     const results = analyzeProjectContinuity(project);
     expect(results.some((result) => result.code === "CHARACTER_OVERLAPPING_EVENTS")).toBe(true);
   });
+
+  it("flags a dead character appearing in a later literal scene", () => {
+    const project = createBaseProject();
+    project.characters[0] = {
+      ...project.characters[0],
+      status: "DEAD",
+      statusDateInternal: "2026-01-01T14:03:30.000Z",
+    };
+
+    const results = analyzeProjectContinuity(project);
+    expect(results.some((result) => result.code === "CHARACTER_APPEARS_AFTER_STATUS")).toBe(
+      true,
+    );
+  });
+
+  it("allows flashback-like returns for a dead character", () => {
+    const project = createBaseProject();
+    project.characters[0] = {
+      ...project.characters[0],
+      status: "DEAD",
+      statusDateInternal: "2026-01-01T14:03:30.000Z",
+    };
+    project.events[1] = {
+      ...project.events[1],
+      eventType: "FLASHBACK",
+    };
+
+    const results = analyzeProjectContinuity(project);
+    expect(results.some((result) => result.code === "CHARACTER_APPEARS_AFTER_STATUS")).toBe(
+      false,
+    );
+  });
+
+  it("flags events whose end is earlier than their start", () => {
+    const project = createBaseProject();
+    project.events[0] = {
+      ...project.events[0],
+      internalEnd: "2026-01-01T14:02:00.000Z",
+    };
+
+    const results = analyzeProjectContinuity(project);
+    expect(results.some((result) => result.code === "EVENT_END_BEFORE_START")).toBe(true);
+  });
 });

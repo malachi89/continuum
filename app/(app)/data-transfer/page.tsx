@@ -1,11 +1,15 @@
-import { SectionPage } from "@/components/SectionPage";
+import { ProjectRoutePicker } from "@/components/projects/ProjectRoutePicker";
+import { getOwnedProjects } from "@/lib/continuity/data";
 
-export default function DataTransferPage() {
+export default async function DataTransferPage() {
+  const projects = await getOwnedProjects();
+
   return (
-    <SectionPage
-      eyebrow="X07"
-      titleKey="exportImport"
-      descriptionKey="exportImportDescription"
+    <ProjectRoutePicker
+      title="Importar / exportar"
+      description="Selecciona un proyecto para ver su JSON portable o crear una copia nueva desde un bundle valido."
+      routeSuffix="/import-export"
+      projects={projects}
     />
   );
 }

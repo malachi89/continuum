@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import type { ContinuityImportBundle } from "@/lib/continuity/import-export";
 import type { AnalyzableProject } from "@/lib/continuity/types";
 
 export async function requireCurrentUser() {
@@ -239,6 +240,89 @@ export async function getOwnedAnalyzableProject(projectId: string): Promise<Anal
       startLocationId: event.startLocationId,
       endLocationId: event.endLocationId,
       characterIds: event.characters.map((link) => link.characterId),
+    })),
+  };
+}
+
+export async function getOwnedProjectExportBundle(
+  projectId: string,
+): Promise<ContinuityImportBundle> {
+  const user = await requireCurrentUser();
+
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      ownerId: user.id,
+    },
+    include: {
+      characters: {
+        orderBy: { name: "asc" },
+      },
+      locations: {
+        orderBy: { name: "asc" },
+      },
+      events: {
+        orderBy: { internalStart: "asc" },
+      },
+    },
+  });
+
+  if (!project) {
+    notFound();
+  }
+
+  const eventCharacters = await prisma.eventCharacter.findMany({
+    where: {
+      event: {
+        projectId,
+      },
+    },
+    orderBy: [{ eventId: "asc" }, { characterId: "asc" }],
+  });
+
+  return {
+    project: {
+      title: project.title,
+      type: project.type,
+      description: project.description,
+    },
+    characters: project.characters.map((character) => ({
+      id: character.id,
+      name: character.name,
+      alias: character.alias,
+      description: character.description,
+      notes: character.notes,
+      color: character.color,
+      maxTravelMode: character.maxTravelMode,
+      maxSpeedKmh: character.maxSpeedKmh,
+      status: character.status,
+      statusDateInternal: character.statusDateInternal?.toISOString() ?? null,
+    })),
+    locations: project.locations.map((location) => ({
+      id: location.id,
+      name: location.name,
+      description: location.description,
+      latitude: location.latitude,
+      longitude: location.longitude,
+      type: location.type,
+      notes: location.notes,
+    })),
+    events: project.events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      description: event.description,
+      internalStart: event.internalStart.toISOString(),
+      internalEnd: event.internalEnd.toISOString(),
+      startLocationId: event.startLocationId,
+      endLocationId: event.endLocationId,
+      eventType: event.eventType,
+      chapterOrEpisode: event.chapterOrEpisode,
+      narrativeOrder: event.narrativeOrder,
+      notes: event.notes,
+    })),
+    eventCharacters: eventCharacters.map((link) => ({
+      eventId: link.eventId,
+      characterId: link.characterId,
     })),
   };
 }

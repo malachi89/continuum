@@ -4,6 +4,7 @@ import {
   CharacterStatus,
   EventType,
   LocationType,
+  Prisma,
   ProjectType,
   TravelMode,
 } from "@prisma/client";
@@ -12,9 +13,14 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { requireCurrentUser } from "@/lib/continuity/data";
+import {
+  createImportedProjectTitle,
+  parseContinuityImportJson,
+} from "@/lib/continuity/import-export";
 
 export type CrudActionState = {
   error?: string;
+  success?: string;
 };
 
 const optionalText = z.preprocess(
@@ -841,4 +847,162 @@ export async function removeCharacterFromEventAction(input: {
   });
 
   refreshProjectRoutes(input.projectId);
+}
+
+export async function importProjectJsonAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const sourceProjectId = String(formData.get("sourceProjectId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "/projects");
+  const rawJson = String(formData.get("rawJson") ?? "").trim();
+
+  if (!sourceProjectId) {
+    return { error: "No encontramos el proyecto de destino para esta importacion." };
+  }
+
+  if (!rawJson) {
+    return { error: "Pega un JSON valido para importar." };
+  }
+
+  const user = await requireCurrentUser();
+
+  let bundle;
+
+  try {
+    bundle = parseContinuityImportJson(rawJson);
+  } catch (error) {
+    if (error instanceof SyntaxError) {
+      return { error: "El JSON no tiene un formato valido." };
+    }
+
+    if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      return { error: "No pudimos procesar la importacion." };
+    }
+
+    if (error instanceof Error && "issues" in error) {
+      return { error: "El JSON no cumple la estructura minima requerida." };
+    }
+
+    return { error: "No pudimos validar el JSON de importacion." };
+  }
+
+  try {
+    const importedProject = await prisma.$transaction(async (tx) => {
+      const project = await tx.project.create({
+        data: {
+          ownerId: user.id,
+          title: createImportedProjectTitle(bundle.project.title),
+          type: bundle.project.type as ProjectType,
+          description: bundle.project.description ?? null,
+        },
+        select: { id: true },
+      });
+
+      const locationIdMap = new Map<string, string>();
+      const characterIdMap = new Map<string, string>();
+      const eventIdMap = new Map<string, string>();
+
+      for (const location of bundle.locations) {
+        const created = await tx.location.create({
+          data: {
+            projectId: project.id,
+            name: location.name,
+            description: location.description ?? null,
+            latitude: location.latitude ?? null,
+            longitude: location.longitude ?? null,
+            type: location.type as LocationType,
+            notes: location.notes ?? null,
+          },
+          select: { id: true },
+        });
+
+        locationIdMap.set(location.id, created.id);
+      }
+
+      for (const character of bundle.characters) {
+        const created = await tx.character.create({
+          data: {
+            projectId: project.id,
+            name: character.name,
+            alias: character.alias ?? null,
+            description: character.description ?? null,
+            notes: character.notes ?? null,
+            color: character.color,
+            maxTravelMode: (character.maxTravelMode as TravelMode | null) ?? null,
+            maxSpeedKmh: character.maxSpeedKmh ?? null,
+            status: character.status as CharacterStatus,
+            statusDateInternal: character.statusDateInternal
+              ? new Date(character.statusDateInternal)
+              : null,
+          },
+          select: { id: true },
+        });
+
+        characterIdMap.set(character.id, created.id);
+      }
+
+      for (const event of bundle.events) {
+        const created = await tx.event.create({
+          data: {
+            projectId: project.id,
+            title: event.title,
+            description: event.description ?? null,
+            internalStart: new Date(event.internalStart),
+            internalEnd: new Date(event.internalEnd),
+            startLocationId: event.startLocationId
+              ? locationIdMap.get(event.startLocationId) ?? null
+              : null,
+            endLocationId: event.endLocationId
+              ? locationIdMap.get(event.endLocationId) ?? null
+              : null,
+            eventType: event.eventType as EventType,
+            chapterOrEpisode: event.chapterOrEpisode ?? null,
+            narrativeOrder: event.narrativeOrder ?? null,
+            notes: event.notes ?? null,
+          },
+          select: { id: true },
+        });
+
+        eventIdMap.set(event.id, created.id);
+      }
+
+      for (const link of bundle.eventCharacters) {
+        const mappedEventId = eventIdMap.get(link.eventId);
+        const mappedCharacterId = characterIdMap.get(link.characterId);
+
+        if (!mappedEventId || !mappedCharacterId) {
+          continue;
+        }
+
+        await tx.eventCharacter.upsert({
+          where: {
+            eventId_characterId: {
+              eventId: mappedEventId,
+              characterId: mappedCharacterId,
+            },
+          },
+          update: {},
+          create: {
+            eventId: mappedEventId,
+            characterId: mappedCharacterId,
+          },
+        });
+      }
+
+      return project;
+    });
+
+    refreshProjectRoutes(importedProject.id);
+    revalidatePath("/data-transfer");
+    redirect(`/projects/${importedProject.id}/import-export`);
+  } catch {
+    return {
+      error:
+        "No pudimos importar el proyecto. Revisa enums, fechas y referencias de locaciones o personajes.",
+      success: undefined,
+    };
+  }
+
+  redirect(redirectTo);
 }
