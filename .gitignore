@@ -1,7 +1,12 @@
 .DS_Store
 Thumbs.db
 node_modules/
+.next/
+coverage/
+bootstrap-temp/
 dist/
 build/
 .env
 .env.*
+prisma/dev.db
+prisma/dev.db-journal
