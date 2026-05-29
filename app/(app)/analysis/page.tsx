@@ -1,11 +1,15 @@
-import { SectionPage } from "@/components/SectionPage";
+import { ProjectRoutePicker } from "@/components/projects/ProjectRoutePicker";
+import { getOwnedProjects } from "@/lib/continuity/data";
 
-export default function AnalysisPage() {
+export default async function AnalysisPage() {
+  const projects = await getOwnedProjects();
+
   return (
-    <SectionPage
-      eyebrow="A06"
-      titleKey="analysis"
-      descriptionKey="analysisDescription"
+    <ProjectRoutePicker
+      title="Analisis"
+      description="Selecciona un proyecto para correr el motor de continuidad y revisar errores, warnings y notas editoriales."
+      routeSuffix="/analysis"
+      projects={projects}
     />
   );
 }

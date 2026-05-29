@@ -1,6 +1,7 @@
 import { notFound, redirect } from "next/navigation";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth/current-user";
+import type { AnalyzableProject } from "@/lib/continuity/types";
 
 export async function requireCurrentUser() {
   const user = await getCurrentUser();
@@ -170,5 +171,74 @@ export async function getOwnedCharacterTimeline(projectId: string, characterId: 
   return {
     character,
     events,
+  };
+}
+
+export async function getOwnedAnalyzableProject(projectId: string): Promise<AnalyzableProject> {
+  const user = await requireCurrentUser();
+
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      ownerId: user.id,
+    },
+    include: {
+      characters: {
+        orderBy: { name: "asc" },
+      },
+      locations: {
+        orderBy: { name: "asc" },
+      },
+      events: {
+        orderBy: { internalStart: "asc" },
+        include: {
+          characters: {
+            select: {
+              characterId: true,
+            },
+          },
+        },
+      },
+    },
+  });
+
+  if (!project) {
+    notFound();
+  }
+
+  return {
+    id: project.id,
+    title: project.title,
+    type: project.type,
+    characters: project.characters.map((character) => ({
+      id: character.id,
+      name: character.name,
+      alias: character.alias,
+      color: character.color,
+      maxTravelMode: character.maxTravelMode,
+      maxSpeedKmh: character.maxSpeedKmh,
+      status: character.status,
+      statusDateInternal: character.statusDateInternal?.toISOString() ?? null,
+    })),
+    locations: project.locations.map((location) => ({
+      id: location.id,
+      name: location.name,
+      type: location.type,
+      latitude: location.latitude,
+      longitude: location.longitude,
+    })),
+    events: project.events.map((event) => ({
+      id: event.id,
+      title: event.title,
+      eventType: event.eventType,
+      description: event.description,
+      chapterOrEpisode: event.chapterOrEpisode,
+      narrativeOrder: event.narrativeOrder,
+      internalStart: event.internalStart.toISOString(),
+      internalEnd: event.internalEnd.toISOString(),
+      startLocationId: event.startLocationId,
+      endLocationId: event.endLocationId,
+      characterIds: event.characters.map((link) => link.characterId),
+    })),
   };
 }
