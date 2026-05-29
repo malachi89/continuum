@@ -6,6 +6,50 @@ datasource db {
   provider = "sqlite"
 }
 
+enum ProjectType {
+  NOVEL
+  FILM
+  SERIES
+  COMIC
+  OTHER
+}
+
+enum TravelMode {
+  WALKING
+  CAR
+  PLANE
+  MAGIC_PORTAL
+  OTHER
+}
+
+enum CharacterStatus {
+  ALIVE
+  DEAD
+  MISSING
+  UNKNOWN
+}
+
+enum LocationType {
+  CITY
+  BUILDING
+  ROOM
+  PLANET
+  DIMENSION
+  OTHER
+}
+
+enum EventType {
+  SCENE
+  TRAVEL
+  FLASHBACK
+  DREAM
+  VISION
+  ELLIPSIS
+  BATTLE
+  CONVERSATION
+  OTHER
+}
+
 model User {
   id           String    @id @default(cuid())
   name         String
@@ -27,12 +71,85 @@ model Session {
 }
 
 model Project {
-  id        String   @id @default(cuid())
-  name      String
-  ownerId   String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  owner     User     @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  id          String      @id @default(cuid())
+  ownerId     String
+  title       String
+  type        ProjectType
+  description String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  characters  Character[]
+  locations   Location[]
+  events      Event[]
 
   @@index([ownerId])
+}
+
+model Character {
+  id                 String           @id @default(cuid())
+  projectId          String
+  name               String
+  alias              String?
+  description        String?
+  notes              String?
+  color              String
+  maxTravelMode      TravelMode?
+  maxSpeedKmh        Float?
+  status             CharacterStatus  @default(UNKNOWN)
+  statusDateInternal DateTime?
+  project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  eventLinks         EventCharacter[]
+
+  @@index([projectId])
+}
+
+model Location {
+  id          String       @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  latitude    Float?
+  longitude   Float?
+  type        LocationType
+  notes       String?
+  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startEvents Event[]      @relation("EventStartLocation")
+  endEvents   Event[]      @relation("EventEndLocation")
+
+  @@index([projectId])
+}
+
+model Event {
+  id               String           @id @default(cuid())
+  projectId        String
+  title            String
+  description      String?
+  internalStart    DateTime
+  internalEnd      DateTime
+  startLocationId  String?
+  endLocationId    String?
+  eventType        EventType
+  chapterOrEpisode String?
+  narrativeOrder   Int?
+  notes            String?
+  project          Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  startLocation    Location?        @relation("EventStartLocation", fields: [startLocationId], references: [id], onDelete: SetNull)
+  endLocation      Location?        @relation("EventEndLocation", fields: [endLocationId], references: [id], onDelete: SetNull)
+  characters       EventCharacter[]
+
+  @@index([projectId])
+  @@index([internalStart])
+  @@index([startLocationId])
+  @@index([endLocationId])
+}
+
+model EventCharacter {
+  eventId     String
+  characterId String
+  event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, characterId])
+  @@index([characterId])
 }
