@@ -1,11 +1,15 @@
-import { SectionPage } from "@/components/SectionPage";
+import { ProjectRoutePicker } from "@/components/projects/ProjectRoutePicker";
+import { getOwnedProjects } from "@/lib/continuity/data";
 
-export default function LocationsPage() {
+export default async function LocationsPage() {
+  const projects = await getOwnedProjects();
+
   return (
-    <SectionPage
-      eyebrow="L03"
-      titleKey="locations"
-      descriptionKey="locationsDescription"
+    <ProjectRoutePicker
+      title="Locaciones"
+      description="Selecciona un proyecto para trabajar sus lugares, coordenadas opcionales y notas espaciales."
+      routeSuffix="/locations"
+      projects={projects}
     />
   );
 }

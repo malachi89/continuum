@@ -1,13 +1,24 @@
 import "dotenv/config";
+import bcrypt from "bcryptjs";
+import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import {
   CharacterStatus,
   EventType,
   LocationType,
+  PrismaClient,
   ProjectType,
   TravelMode,
 } from "@prisma/client";
-import { hashPassword } from "../lib/auth/password.ts";
-import { prisma } from "../lib/prisma.ts";
+
+const adapter = new PrismaBetterSqlite3({
+  url: process.env.DATABASE_URL ?? "file:./prisma/dev.db",
+});
+
+const prisma = new PrismaClient({ adapter });
+
+async function hashPassword(password: string) {
+  return bcrypt.hash(password, 12);
+}
 
 async function main() {
   const email = "demo@continuity.local";

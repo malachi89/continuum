@@ -1,0 +1,745 @@
+"use server";
+
+import {
+  CharacterStatus,
+  EventType,
+  LocationType,
+  ProjectType,
+  TravelMode,
+} from "@prisma/client";
+import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { requireCurrentUser } from "@/lib/continuity/data";
+
+export type CrudActionState = {
+  error?: string;
+};
+
+const optionalText = z.preprocess(
+  (value) => {
+    if (typeof value !== "string") {
+      return undefined;
+    }
+
+    const trimmed = value.trim();
+    return trimmed.length > 0 ? trimmed : undefined;
+  },
+  z.string().optional(),
+);
+
+const optionalNumber = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return undefined;
+  }
+
+  const parsed = Number(trimmed);
+  return Number.isFinite(parsed) ? parsed : Number.NaN;
+}, z.number().finite().optional());
+
+const optionalDateString = z.preprocess((value) => {
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+}, z.string().optional());
+
+const projectSchema = z.object({
+  projectId: optionalText,
+  redirectTo: z.string().min(1),
+  title: z.string().trim().min(1, "El titulo es obligatorio."),
+  type: z.nativeEnum(ProjectType, {
+    error: "Selecciona un tipo de proyecto valido.",
+  }),
+  description: optionalText,
+});
+
+const characterSchema = z.object({
+  characterId: optionalText,
+  projectId: z.string().min(1),
+  redirectTo: z.string().min(1),
+  name: z.string().trim().min(1, "El nombre es obligatorio."),
+  alias: optionalText,
+  description: optionalText,
+  notes: optionalText,
+  color: z
+    .string()
+    .trim()
+    .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Usa un color hexadecimal valido."),
+  maxTravelMode: z.preprocess(
+    (value) => (value === "" ? undefined : value),
+    z.nativeEnum(TravelMode).optional(),
+  ),
+  maxSpeedKmh: optionalNumber,
+  status: z.nativeEnum(CharacterStatus, {
+    error: "Selecciona un estado valido.",
+  }),
+  statusDateInternal: optionalDateString,
+});
+
+const locationSchema = z.object({
+  locationId: optionalText,
+  projectId: z.string().min(1),
+  redirectTo: z.string().min(1),
+  name: z.string().trim().min(1, "El nombre es obligatorio."),
+  description: optionalText,
+  latitude: optionalNumber,
+  longitude: optionalNumber,
+  type: z.nativeEnum(LocationType, {
+    error: "Selecciona un tipo de locacion valido.",
+  }),
+  notes: optionalText,
+});
+
+const eventSchema = z.object({
+  eventId: optionalText,
+  projectId: z.string().min(1),
+  redirectTo: z.string().min(1),
+  title: z.string().trim().min(1, "El titulo es obligatorio."),
+  description: optionalText,
+  internalStart: z.string().trim().min(1, "La fecha interna inicial es obligatoria."),
+  internalEnd: z.string().trim().min(1, "La fecha interna final es obligatoria."),
+  startLocationId: optionalText,
+  endLocationId: optionalText,
+  eventType: z.nativeEnum(EventType, {
+    error: "Selecciona un tipo de evento valido.",
+  }),
+  chapterOrEpisode: optionalText,
+  narrativeOrder: optionalNumber,
+  notes: optionalText,
+  characterIds: z.array(z.string()).default([]),
+});
+
+function invalidFormState(message: string): CrudActionState {
+  return { error: message };
+}
+
+function parseDateString(value: string, label: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    throw new Error(`${label} no tiene un formato valido.`);
+  }
+
+  return date;
+}
+
+async function getOwnedProjectOrThrow(projectId: string, ownerId: string) {
+  const project = await prisma.project.findFirst({
+    where: {
+      id: projectId,
+      ownerId,
+    },
+    select: { id: true },
+  });
+
+  if (!project) {
+    throw new Error("No encontramos ese proyecto para tu cuenta.");
+  }
+
+  return project;
+}
+
+async function assertOwnedLocation(
+  projectId: string,
+  ownerId: string,
+  locationId: string | undefined,
+) {
+  if (!locationId) {
+    return null;
+  }
+
+  const location = await prisma.location.findFirst({
+    where: {
+      id: locationId,
+      projectId,
+      project: {
+        ownerId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!location) {
+    throw new Error("La locacion seleccionada no pertenece a este proyecto.");
+  }
+
+  return location.id;
+}
+
+async function assertOwnedCharacterIds(
+  projectId: string,
+  ownerId: string,
+  characterIds: string[],
+) {
+  const uniqueCharacterIds = [...new Set(characterIds.filter(Boolean))];
+
+  if (uniqueCharacterIds.length === 0) {
+    return uniqueCharacterIds;
+  }
+
+  const ownedCharacters = await prisma.character.findMany({
+    where: {
+      id: { in: uniqueCharacterIds },
+      projectId,
+      project: {
+        ownerId,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (ownedCharacters.length !== uniqueCharacterIds.length) {
+    throw new Error("Uno o mas personajes seleccionados no pertenecen a este proyecto.");
+  }
+
+  return uniqueCharacterIds;
+}
+
+function refreshProjectRoutes(projectId?: string) {
+  revalidatePath("/projects");
+
+  if (!projectId) {
+    return;
+  }
+
+  revalidatePath(`/projects/${projectId}`);
+  revalidatePath(`/projects/${projectId}/characters`);
+  revalidatePath(`/projects/${projectId}/locations`);
+  revalidatePath(`/projects/${projectId}/events`);
+  revalidatePath("/characters");
+  revalidatePath("/locations");
+  revalidatePath("/events");
+}
+
+export async function createProjectAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = projectSchema.safeParse({
+    redirectTo: formData.get("redirectTo"),
+    title: formData.get("title"),
+    type: formData.get("type"),
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success) {
+    return invalidFormState(parsed.error.issues[0]?.message ?? "No pudimos crear el proyecto.");
+  }
+
+  const user = await requireCurrentUser();
+
+  const project = await prisma.project.create({
+    data: {
+      ownerId: user.id,
+      title: parsed.data.title,
+      type: parsed.data.type,
+      description: parsed.data.description,
+    },
+    select: { id: true },
+  });
+
+  refreshProjectRoutes(project.id);
+  redirect(`/projects/${project.id}`);
+}
+
+export async function updateProjectAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = projectSchema.safeParse({
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    title: formData.get("title"),
+    type: formData.get("type"),
+    description: formData.get("description"),
+  });
+
+  if (!parsed.success || !parsed.data.projectId) {
+    return invalidFormState("No pudimos actualizar el proyecto.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await getOwnedProjectOrThrow(parsed.data.projectId, user.id);
+
+    await prisma.project.update({
+      where: { id: parsed.data.projectId },
+      data: {
+        title: parsed.data.title,
+        type: parsed.data.type,
+        description: parsed.data.description,
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos actualizar el proyecto.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function deleteProjectAction(formData: FormData) {
+  const projectId = String(formData.get("projectId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "/projects");
+  const user = await requireCurrentUser();
+
+  if (!projectId) {
+    throw new Error("Project id is required.");
+  }
+
+  await getOwnedProjectOrThrow(projectId, user.id);
+  await prisma.project.delete({ where: { id: projectId } });
+  refreshProjectRoutes(projectId);
+  redirect(redirectTo);
+}
+
+export async function createCharacterAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = characterSchema.safeParse({
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    name: formData.get("name"),
+    alias: formData.get("alias"),
+    description: formData.get("description"),
+    notes: formData.get("notes"),
+    color: formData.get("color"),
+    maxTravelMode: formData.get("maxTravelMode"),
+    maxSpeedKmh: formData.get("maxSpeedKmh"),
+    status: formData.get("status"),
+    statusDateInternal: formData.get("statusDateInternal"),
+  });
+
+  if (!parsed.success) {
+    return invalidFormState(parsed.error.issues[0]?.message ?? "No pudimos crear el personaje.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await getOwnedProjectOrThrow(parsed.data.projectId, user.id);
+
+    await prisma.character.create({
+      data: {
+        projectId: parsed.data.projectId,
+        name: parsed.data.name,
+        alias: parsed.data.alias,
+        description: parsed.data.description,
+        notes: parsed.data.notes,
+        color: parsed.data.color,
+        maxTravelMode: parsed.data.maxTravelMode,
+        maxSpeedKmh: parsed.data.maxSpeedKmh,
+        status: parsed.data.status,
+        statusDateInternal: parsed.data.statusDateInternal
+          ? parseDateString(parsed.data.statusDateInternal, "La fecha de estado")
+          : null,
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos crear el personaje.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function updateCharacterAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = characterSchema.safeParse({
+    characterId: formData.get("characterId"),
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    name: formData.get("name"),
+    alias: formData.get("alias"),
+    description: formData.get("description"),
+    notes: formData.get("notes"),
+    color: formData.get("color"),
+    maxTravelMode: formData.get("maxTravelMode"),
+    maxSpeedKmh: formData.get("maxSpeedKmh"),
+    status: formData.get("status"),
+    statusDateInternal: formData.get("statusDateInternal"),
+  });
+
+  if (!parsed.success || !parsed.data.characterId) {
+    return invalidFormState("No pudimos actualizar el personaje.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await prisma.character.findFirstOrThrow({
+      where: {
+        id: parsed.data.characterId,
+        projectId: parsed.data.projectId,
+        project: {
+          ownerId: user.id,
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.character.update({
+      where: { id: parsed.data.characterId },
+      data: {
+        name: parsed.data.name,
+        alias: parsed.data.alias,
+        description: parsed.data.description,
+        notes: parsed.data.notes,
+        color: parsed.data.color,
+        maxTravelMode: parsed.data.maxTravelMode,
+        maxSpeedKmh: parsed.data.maxSpeedKmh,
+        status: parsed.data.status,
+        statusDateInternal: parsed.data.statusDateInternal
+          ? parseDateString(parsed.data.statusDateInternal, "La fecha de estado")
+          : null,
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos actualizar el personaje.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function deleteCharacterAction(formData: FormData) {
+  const characterId = String(formData.get("characterId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "/projects");
+  const user = await requireCurrentUser();
+
+  await prisma.character.findFirstOrThrow({
+    where: {
+      id: characterId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  await prisma.character.delete({ where: { id: characterId } });
+  refreshProjectRoutes(projectId);
+  redirect(redirectTo);
+}
+
+export async function createLocationAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = locationSchema.safeParse({
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    name: formData.get("name"),
+    description: formData.get("description"),
+    latitude: formData.get("latitude"),
+    longitude: formData.get("longitude"),
+    type: formData.get("type"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success) {
+    return invalidFormState(parsed.error.issues[0]?.message ?? "No pudimos crear la locacion.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await getOwnedProjectOrThrow(parsed.data.projectId, user.id);
+
+    await prisma.location.create({
+      data: {
+        projectId: parsed.data.projectId,
+        name: parsed.data.name,
+        description: parsed.data.description,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+        type: parsed.data.type,
+        notes: parsed.data.notes,
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos crear la locacion.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function updateLocationAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = locationSchema.safeParse({
+    locationId: formData.get("locationId"),
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    name: formData.get("name"),
+    description: formData.get("description"),
+    latitude: formData.get("latitude"),
+    longitude: formData.get("longitude"),
+    type: formData.get("type"),
+    notes: formData.get("notes"),
+  });
+
+  if (!parsed.success || !parsed.data.locationId) {
+    return invalidFormState("No pudimos actualizar la locacion.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await prisma.location.findFirstOrThrow({
+      where: {
+        id: parsed.data.locationId,
+        projectId: parsed.data.projectId,
+        project: {
+          ownerId: user.id,
+        },
+      },
+      select: { id: true },
+    });
+
+    await prisma.location.update({
+      where: { id: parsed.data.locationId },
+      data: {
+        name: parsed.data.name,
+        description: parsed.data.description,
+        latitude: parsed.data.latitude,
+        longitude: parsed.data.longitude,
+        type: parsed.data.type,
+        notes: parsed.data.notes,
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos actualizar la locacion.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function deleteLocationAction(formData: FormData) {
+  const locationId = String(formData.get("locationId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "/projects");
+  const user = await requireCurrentUser();
+
+  await prisma.location.findFirstOrThrow({
+    where: {
+      id: locationId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  await prisma.location.delete({ where: { id: locationId } });
+  refreshProjectRoutes(projectId);
+  redirect(redirectTo);
+}
+
+export async function createEventAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = eventSchema.safeParse({
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    title: formData.get("title"),
+    description: formData.get("description"),
+    internalStart: formData.get("internalStart"),
+    internalEnd: formData.get("internalEnd"),
+    startLocationId: formData.get("startLocationId"),
+    endLocationId: formData.get("endLocationId"),
+    eventType: formData.get("eventType"),
+    chapterOrEpisode: formData.get("chapterOrEpisode"),
+    narrativeOrder: formData.get("narrativeOrder"),
+    notes: formData.get("notes"),
+    characterIds: formData.getAll("characterIds"),
+  });
+
+  if (!parsed.success) {
+    return invalidFormState(parsed.error.issues[0]?.message ?? "No pudimos crear el evento.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await getOwnedProjectOrThrow(parsed.data.projectId, user.id);
+
+    const startLocationId = await assertOwnedLocation(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.startLocationId,
+    );
+    const endLocationId = await assertOwnedLocation(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.endLocationId,
+    );
+    const characterIds = await assertOwnedCharacterIds(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.characterIds,
+    );
+
+    await prisma.event.create({
+      data: {
+        projectId: parsed.data.projectId,
+        title: parsed.data.title,
+        description: parsed.data.description,
+        internalStart: parseDateString(parsed.data.internalStart, "La fecha inicial"),
+        internalEnd: parseDateString(parsed.data.internalEnd, "La fecha final"),
+        startLocationId,
+        endLocationId,
+        eventType: parsed.data.eventType,
+        chapterOrEpisode: parsed.data.chapterOrEpisode,
+        narrativeOrder: parsed.data.narrativeOrder,
+        notes: parsed.data.notes,
+        characters: {
+          create: characterIds.map((characterId) => ({ characterId })),
+        },
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos crear el evento.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function updateEventAction(
+  _prevState: CrudActionState,
+  formData: FormData,
+): Promise<CrudActionState> {
+  const parsed = eventSchema.safeParse({
+    eventId: formData.get("eventId"),
+    projectId: formData.get("projectId"),
+    redirectTo: formData.get("redirectTo"),
+    title: formData.get("title"),
+    description: formData.get("description"),
+    internalStart: formData.get("internalStart"),
+    internalEnd: formData.get("internalEnd"),
+    startLocationId: formData.get("startLocationId"),
+    endLocationId: formData.get("endLocationId"),
+    eventType: formData.get("eventType"),
+    chapterOrEpisode: formData.get("chapterOrEpisode"),
+    narrativeOrder: formData.get("narrativeOrder"),
+    notes: formData.get("notes"),
+    characterIds: formData.getAll("characterIds"),
+  });
+
+  if (!parsed.success || !parsed.data.eventId) {
+    return invalidFormState("No pudimos actualizar el evento.");
+  }
+
+  const user = await requireCurrentUser();
+
+  try {
+    await prisma.event.findFirstOrThrow({
+      where: {
+        id: parsed.data.eventId,
+        projectId: parsed.data.projectId,
+        project: {
+          ownerId: user.id,
+        },
+      },
+      select: { id: true },
+    });
+
+    const startLocationId = await assertOwnedLocation(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.startLocationId,
+    );
+    const endLocationId = await assertOwnedLocation(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.endLocationId,
+    );
+    const characterIds = await assertOwnedCharacterIds(
+      parsed.data.projectId,
+      user.id,
+      parsed.data.characterIds,
+    );
+
+    await prisma.event.update({
+      where: { id: parsed.data.eventId },
+      data: {
+        title: parsed.data.title,
+        description: parsed.data.description,
+        internalStart: parseDateString(parsed.data.internalStart, "La fecha inicial"),
+        internalEnd: parseDateString(parsed.data.internalEnd, "La fecha final"),
+        startLocationId,
+        endLocationId,
+        eventType: parsed.data.eventType,
+        chapterOrEpisode: parsed.data.chapterOrEpisode,
+        narrativeOrder: parsed.data.narrativeOrder,
+        notes: parsed.data.notes,
+        characters: {
+          deleteMany: {},
+          create: characterIds.map((characterId) => ({ characterId })),
+        },
+      },
+    });
+  } catch (error) {
+    return invalidFormState(
+      error instanceof Error ? error.message : "No pudimos actualizar el evento.",
+    );
+  }
+
+  refreshProjectRoutes(parsed.data.projectId);
+  redirect(parsed.data.redirectTo);
+}
+
+export async function deleteEventAction(formData: FormData) {
+  const eventId = String(formData.get("eventId") ?? "");
+  const projectId = String(formData.get("projectId") ?? "");
+  const redirectTo = String(formData.get("redirectTo") ?? "/projects");
+  const user = await requireCurrentUser();
+
+  await prisma.event.findFirstOrThrow({
+    where: {
+      id: eventId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  await prisma.event.delete({ where: { id: eventId } });
+  refreshProjectRoutes(projectId);
+  redirect(redirectTo);
+}
