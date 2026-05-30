@@ -10,6 +10,33 @@ import { navigationItems } from "@/lib/continuity/navigation";
 import type { CurrentUser } from "@/lib/auth/current-user";
 import { LogoutButton } from "@/components/LogoutButton";
 
+const projectScopedRoutes = new Map<string, string>([
+  ["/characters", "/characters"],
+  ["/locations", "/locations"],
+  ["/events", "/events"],
+  ["/timeline", "/timeline"],
+  ["/analysis", "/analysis"],
+  ["/data-transfer", "/import-export"],
+]);
+
+function getActiveProjectId(pathname: string) {
+  const match = pathname.match(/^\/projects\/([^/]+)/);
+  return match?.[1] ?? null;
+}
+
+function getNavigationHref(itemHref: string, projectId: string | null) {
+  if (!projectId) {
+    return itemHref;
+  }
+
+  if (itemHref === "/projects") {
+    return `/projects/${projectId}`;
+  }
+
+  const projectRoute = projectScopedRoutes.get(itemHref);
+  return projectRoute ? `/projects/${projectId}${projectRoute}` : itemHref;
+}
+
 export function AppShell({
   children,
   currentUser,
@@ -18,6 +45,7 @@ export function AppShell({
   currentUser: CurrentUser;
 }) {
   const pathname = usePathname();
+  const activeProjectId = getActiveProjectId(pathname);
   const { language, setLanguage, t } = useLanguage();
   const [isNavOpen, setIsNavOpen] = useState(false);
 
@@ -62,11 +90,17 @@ export function AppShell({
 
           <nav className="mt-8 space-y-2">
             {navigationItems.map((item) => {
-              const active = pathname === item.href;
+              const href = getNavigationHref(item.href, activeProjectId);
+              const active =
+                pathname === href ||
+                (activeProjectId !== null &&
+                  item.href !== "/projects" &&
+                  pathname.startsWith(`${href}/`));
+
               return (
                 <Link
                   key={item.href}
-                  href={item.href}
+                  href={href}
                   className={clsx(
                     "flex items-center justify-between rounded-2xl border px-4 py-3 transition",
                     active

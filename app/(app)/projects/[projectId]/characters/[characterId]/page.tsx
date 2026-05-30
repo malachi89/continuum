@@ -1,7 +1,12 @@
+import {
+  deleteCharacterAction,
+  updateCharacterAction,
+} from "@/app/(app)/projects/actions";
 import Link from "next/link";
+import { CharacterForm } from "@/components/forms/CharacterForm";
+import { DeleteResourceForm } from "@/components/forms/DeleteResourceForm";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { Button } from "@/components/ui/Button";
 import { getOwnedCharacterTimeline } from "@/lib/continuity/data";
 import { buildCharacterTracking } from "@/lib/continuity/timeline";
 
@@ -12,6 +17,14 @@ function formatDate(value: string) {
   }).format(new Date(value));
 }
 
+function formatOptionalDate(value?: Date | string | null) {
+  if (!value) {
+    return "Sin fecha";
+  }
+
+  return formatDate(value instanceof Date ? value.toISOString() : value);
+}
+
 export default async function CharacterTrackingPage({
   params,
 }: {
@@ -20,6 +33,8 @@ export default async function CharacterTrackingPage({
   const { projectId, characterId } = await params;
   const { character, events } = await getOwnedCharacterTimeline(projectId, characterId);
   const { timeline, conflicts } = buildCharacterTracking(events);
+  const charactersPath = `/projects/${projectId}/characters`;
+  const detailPath = `${charactersPath}/${characterId}`;
 
   return (
     <div className="space-y-6">
@@ -43,14 +58,80 @@ export default async function CharacterTrackingPage({
           <div className="flex flex-wrap gap-2">
             <Badge>{character.status}</Badge>
             {character.maxTravelMode ? <Badge tone="accent">{character.maxTravelMode}</Badge> : null}
-            {character.maxSpeedKmh ? <Badge tone="success">{character.maxSpeedKmh} km/h</Badge> : null}
+            {character.maxSpeedKmh !== null ? (
+              <Badge tone="success">{character.maxSpeedKmh} km/h</Badge>
+            ) : null}
           </div>
         </div>
 
         <div className="mt-5">
-          <Link href={`/projects/${projectId}/characters`}>
-            <Button variant="secondary">Volver a personajes</Button>
+          <Link
+            href={charactersPath}
+            className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
+          >
+            Volver a personajes
           </Link>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <div className="rounded-[28px] border border-line bg-surface p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+            Detalle
+          </p>
+          <h3 className="mt-3 text-xl font-semibold">Ficha del personaje</h3>
+
+          <dl className="mt-5 space-y-4 text-sm">
+            <div>
+              <dt className="font-medium text-ink">Descripcion</dt>
+              <dd className="mt-1 leading-6 text-muted">
+                {character.description ?? "Sin descripcion registrada."}
+              </dd>
+            </div>
+            <div>
+              <dt className="font-medium text-ink">Notas</dt>
+              <dd className="mt-1 leading-6 text-muted">
+                {character.notes ?? "Sin notas registradas."}
+              </dd>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <dt className="font-medium text-ink">Fecha interna del estado</dt>
+                <dd className="mt-1 text-muted">{formatOptionalDate(character.statusDateInternal)}</dd>
+              </div>
+              <div>
+                <dt className="font-medium text-ink">Proyecto</dt>
+                <dd className="mt-1 text-muted">{character.project.title}</dd>
+              </div>
+            </div>
+          </dl>
+        </div>
+
+        <div className="rounded-[28px] border border-line bg-surface p-6">
+          <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+            Edicion
+          </p>
+          <h3 className="mt-3 text-xl font-semibold">Actualizar personaje</h3>
+          <div className="mt-5">
+            <CharacterForm
+              action={updateCharacterAction}
+              submitLabel="Guardar personaje"
+              projectId={projectId}
+              redirectTo={detailPath}
+              initialValues={character}
+            />
+          </div>
+
+          <div className="mt-5 flex justify-end">
+            <DeleteResourceForm
+              action={deleteCharacterAction}
+              resourceIdName="characterId"
+              resourceId={character.id}
+              projectId={projectId}
+              redirectTo={charactersPath}
+              label="Borrar personaje"
+            />
+          </div>
         </div>
       </section>
 
