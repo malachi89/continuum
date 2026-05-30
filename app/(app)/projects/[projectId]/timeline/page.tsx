@@ -10,6 +10,19 @@ export default async function ProjectTimelinePage({
 }) {
   const { projectId } = await params;
   const { project, characters, locations, events } = await getOwnedProjectTimeline(projectId);
+  const timelineEvents = buildTimelineEventCards(events);
+  const timelineStateKey = timelineEvents
+    .map((event) =>
+      [
+        event.id,
+        event.title,
+        event.internalStartIso,
+        event.internalEndIso,
+        event.narrativeOrder ?? "",
+        event.characterIds.join(","),
+      ].join(":"),
+    )
+    .join("|");
 
   if (events.length === 0) {
     return (
@@ -37,13 +50,14 @@ export default async function ProjectTimelinePage({
       </div>
 
       <TimelineBoard
+        key={timelineStateKey}
         projectId={projectId}
         characters={characters}
         availableLocations={locations.map((location) => ({
           id: location.id,
           name: location.name,
         }))}
-        events={buildTimelineEventCards(events)}
+        events={timelineEvents}
       />
     </section>
   );

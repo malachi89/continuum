@@ -1,13 +1,16 @@
 "use client";
 
 import {
+  closestCenter,
   DndContext,
   DragOverlay,
   PointerSensor,
+  pointerWithin,
   useDraggable,
   useDroppable,
   useSensor,
   useSensors,
+  type CollisionDetection,
   type DragEndEvent,
 } from "@dnd-kit/core";
 import clsx from "clsx";
@@ -34,6 +37,35 @@ type TimelineBoardProps = {
 };
 
 type SortMode = "chronological" | "narrative";
+type Feedback = {
+  tone: "info" | "error" | "success";
+  message: string;
+};
+
+const timelineCollisionDetection: CollisionDetection = (args) => {
+  const pointerCollisions = pointerWithin(args);
+  return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+function getDroppedEventId(event: DragEndEvent) {
+  const dataEventId = event.over?.data.current?.eventId;
+
+  if (typeof dataEventId === "string" && dataEventId.length > 0) {
+    return dataEventId;
+  }
+
+  const overId = event.over?.id;
+
+  if (typeof overId === "string" && overId.startsWith("event:")) {
+    return overId.slice("event:".length);
+  }
+
+  return undefined;
+}
 
 function formatEventDate(value: string) {
   return new Intl.DateTimeFormat("es-MX", {
@@ -203,17 +235,21 @@ export function TimelineBoard({
   const [chapterFilter, setChapterFilter] = useState("all");
   const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
+  const [timelineEvents, setTimelineEvents] = useState(events);
+  const [feedback, setFeedback] = useState<Feedback | null>(null);
   const [, startTransition] = useTransition();
 
   const chapterOptions = useMemo(() => {
     const chapters = new Set(
-      events.map((event) => event.chapterOrEpisode).filter((value): value is string => Boolean(value)),
+      timelineEvents
+        .map((event) => event.chapterOrEpisode)
+        .filter((value): value is string => Boolean(value)),
     );
     return [...chapters].sort((a, b) => a.localeCompare(b));
-  }, [events]);
+  }, [timelineEvents]);
 
   const filteredEvents = useMemo(() => {
-    const filtered = events.filter((event) => {
+    const filtered = timelineEvents.filter((event) => {
       if (characterFilter !== "all" && !event.characterIds.includes(characterFilter)) {
         return false;
       }
@@ -248,7 +284,7 @@ export function TimelineBoard({
         new Date(right.internalStartIso).getTime()
       );
     });
-  }, [chapterFilter, characterFilter, events, locationFilter, sortMode]);
+  }, [chapterFilter, characterFilter, locationFilter, sortMode, timelineEvents]);
 
   const activeCharacter =
     activeCharacterId === null
@@ -257,11 +293,56 @@ export function TimelineBoard({
 
   function handleAssign(characterId: string, eventId: string) {
     const key = `${eventId}:${characterId}`;
+    const targetEvent = timelineEvents.find((event) => event.id === eventId);
+    const character = characters.find((currentCharacter) => currentCharacter.id === characterId);
+
+    if (!targetEvent || !character) {
+      setFeedback({
+        tone: "error",
+        message: "No pudimos identificar el evento o personaje seleccionado.",
+      });
+      return;
+    }
+
+    if (targetEvent.characterIds.includes(characterId)) {
+      return;
+    }
+
+    const previousEvents = timelineEvents;
+
     setBusyKey(key);
+    setFeedback({ tone: "info", message: "Asignando personaje al evento..." });
+    setTimelineEvents((currentEvents) =>
+      currentEvents.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              characterIds: [...event.characterIds, characterId],
+              characters: [
+                ...event.characters,
+                {
+                  id: character.id,
+                  name: character.name,
+                  alias: character.alias,
+                  color: character.color,
+                },
+              ],
+            }
+          : event,
+      ),
+    );
+
     startTransition(async () => {
       try {
         await assignCharacterToEventAction({ projectId, eventId, characterId });
+        setFeedback({ tone: "success", message: "Personaje asignado al evento." });
         router.refresh();
+      } catch (error) {
+        setTimelineEvents(previousEvents);
+        setFeedback({
+          tone: "error",
+          message: getErrorMessage(error, "No pudimos asignar el personaje al evento."),
+        });
       } finally {
         setBusyKey(null);
       }
@@ -270,11 +351,33 @@ export function TimelineBoard({
 
   function handleRemove(eventId: string, characterId: string) {
     const key = `${eventId}:${characterId}`;
+    const previousEvents = timelineEvents;
+
     setBusyKey(key);
+    setFeedback({ tone: "info", message: "Quitando personaje del evento..." });
+    setTimelineEvents((currentEvents) =>
+      currentEvents.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              characterIds: event.characterIds.filter((id) => id !== characterId),
+              characters: event.characters.filter((character) => character.id !== characterId),
+            }
+          : event,
+      ),
+    );
+
     startTransition(async () => {
       try {
         await removeCharacterFromEventAction({ projectId, eventId, characterId });
+        setFeedback({ tone: "success", message: "Personaje quitado del evento." });
         router.refresh();
+      } catch (error) {
+        setTimelineEvents(previousEvents);
+        setFeedback({
+          tone: "error",
+          message: getErrorMessage(error, "No pudimos quitar el personaje del evento."),
+        });
       } finally {
         setBusyKey(null);
       }
@@ -285,7 +388,7 @@ export function TimelineBoard({
     setActiveCharacterId(null);
 
     const characterId = event.active.data.current?.characterId as string | undefined;
-    const eventId = event.over?.data.current?.eventId as string | undefined;
+    const eventId = getDroppedEventId(event);
 
     if (!characterId || !eventId) {
       return;
@@ -296,6 +399,7 @@ export function TimelineBoard({
 
   return (
     <DndContext
+      collisionDetection={timelineCollisionDetection}
       sensors={sensors}
       onDragStart={(event) => {
         const characterId = event.active.data.current?.characterId as string | undefined;
@@ -305,6 +409,23 @@ export function TimelineBoard({
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
+        {feedback ? (
+          <div
+            className={clsx(
+              "rounded-[18px] border px-4 py-3 text-sm",
+              feedback.tone === "error"
+                ? "border-red-200 bg-red-50 text-red-700"
+                : feedback.tone === "success"
+                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                  : "border-line bg-canvas text-muted",
+            )}
+            role={feedback.tone === "error" ? "alert" : "status"}
+            aria-live="polite"
+          >
+            {feedback.message}
+          </div>
+        ) : null}
+
         <section className="rounded-[28px] border border-line bg-surface p-5">
           <div className="flex flex-wrap items-end gap-3">
             <div className="min-w-44 flex-1">
