@@ -2,7 +2,6 @@ import Link from "next/link";
 import { deleteProjectAction, updateProjectAction } from "@/app/(app)/projects/actions";
 import { DeleteResourceForm } from "@/components/forms/DeleteResourceForm";
 import { ProjectForm } from "@/components/forms/ProjectForm";
-import { Badge } from "@/components/ui/Badge";
 import { prisma } from "@/lib/prisma";
 import { getOwnedProject } from "@/lib/continuity/data";
 
@@ -34,33 +33,6 @@ export default async function ProjectSummaryPage({
   return (
     <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <section className="space-y-6">
-        <div className="rounded-[28px] border border-line bg-surface p-6">
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                Resumen
-              </p>
-              <h3 className="mt-3 text-2xl font-semibold">Pulso del proyecto</h3>
-            </div>
-            <Badge tone="success">Alcance del propietario verificado</Badge>
-          </div>
-
-          <div className="mt-6 grid gap-4 md:grid-cols-3">
-            <article className="rounded-[24px] border border-line bg-canvas/70 p-4">
-              <p className="text-sm text-muted">Personajes</p>
-              <p className="mt-2 text-3xl font-semibold">{project._count.characters}</p>
-            </article>
-            <article className="rounded-[24px] border border-line bg-canvas/70 p-4">
-              <p className="text-sm text-muted">Locaciones</p>
-              <p className="mt-2 text-3xl font-semibold">{project._count.locations}</p>
-            </article>
-            <article className="rounded-[24px] border border-line bg-canvas/70 p-4">
-              <p className="text-sm text-muted">Eventos</p>
-              <p className="mt-2 text-3xl font-semibold">{project._count.events}</p>
-            </article>
-          </div>
-        </div>
-
         <div className="rounded-[28px] border border-line bg-surface p-6">
           <div className="flex items-center justify-between gap-4">
             <h3 className="text-xl font-semibold">Accesos rapidos</h3>

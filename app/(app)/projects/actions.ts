@@ -752,6 +752,28 @@ export async function deleteEventAction(formData: FormData) {
   redirect(redirectTo);
 }
 
+export async function createBlankTimelineEventAction(input: { projectId: string }) {
+  const user = await requireCurrentUser();
+
+  await getOwnedProjectOrThrow(input.projectId, user.id);
+
+  const now = new Date();
+  const event = await prisma.event.create({
+    data: {
+      projectId: input.projectId,
+      title: "Evento sin titulo",
+      internalStart: now,
+      internalEnd: now,
+      eventType: EventType.SCENE,
+    },
+    select: { id: true },
+  });
+
+  refreshProjectRoutes(input.projectId);
+
+  return { eventId: event.id };
+}
+
 export async function assignCharacterToEventAction(input: {
   projectId: string;
   eventId: string;
@@ -801,6 +823,46 @@ export async function assignCharacterToEventAction(input: {
       eventId: input.eventId,
       characterId: input.characterId,
     },
+  });
+
+  refreshProjectRoutes(input.projectId);
+}
+
+export async function assignLocationToEventAction(input: {
+  projectId: string;
+  eventId: string;
+  locationId: string;
+  side: "start" | "end";
+}) {
+  const user = await requireCurrentUser();
+
+  const event = await prisma.event.findFirst({
+    where: {
+      id: input.eventId,
+      projectId: input.projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    select: { id: true },
+  });
+
+  if (!event) {
+    throw new Error("No encontramos ese evento dentro de tu proyecto.");
+  }
+
+  const locationId = await assertOwnedLocation(input.projectId, user.id, input.locationId);
+
+  if (!locationId || (input.side !== "start" && input.side !== "end")) {
+    throw new Error("No encontramos esa locacion dentro de tu proyecto.");
+  }
+
+  await prisma.event.update({
+    where: { id: input.eventId },
+    data:
+      input.side === "start"
+        ? { startLocationId: locationId }
+        : { endLocationId: locationId },
   });
 
   refreshProjectRoutes(input.projectId);

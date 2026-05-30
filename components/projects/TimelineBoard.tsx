@@ -15,10 +15,13 @@ import {
 } from "@dnd-kit/core";
 import clsx from "clsx";
 import Link from "next/link";
+import { Plus } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
+  assignLocationToEventAction,
   assignCharacterToEventAction,
+  createBlankTimelineEventAction,
   removeCharacterFromEventAction,
 } from "@/app/(app)/projects/actions";
 import type {
@@ -37,6 +40,7 @@ type TimelineBoardProps = {
 };
 
 type SortMode = "chronological" | "narrative";
+type LocationSide = "start" | "end";
 type Feedback = {
   tone: "info" | "error" | "success";
   message: string;
@@ -44,7 +48,25 @@ type Feedback = {
 
 const timelineCollisionDetection: CollisionDetection = (args) => {
   const pointerCollisions = pointerWithin(args);
-  return pointerCollisions.length > 0 ? pointerCollisions : closestCenter(args);
+
+  if (pointerCollisions.length > 0) {
+    const activeLocationId = args.active.data.current?.locationId;
+
+    if (typeof activeLocationId === "string") {
+      const locationTarget = pointerCollisions.find((collision) => {
+        const container = args.droppableContainers.find(
+          (droppable) => droppable.id === collision.id,
+        );
+        return typeof container?.data.current?.locationSide === "string";
+      });
+
+      return locationTarget ? [locationTarget] : pointerCollisions;
+    }
+
+    return pointerCollisions;
+  }
+
+  return closestCenter(args);
 };
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -67,11 +89,83 @@ function getDroppedEventId(event: DragEndEvent) {
   return undefined;
 }
 
+function getDroppedLocationTarget(event: DragEndEvent) {
+  const eventId = event.over?.data.current?.eventId;
+  const locationSide = event.over?.data.current?.locationSide;
+
+  if (
+    typeof eventId === "string" &&
+    eventId.length > 0 &&
+    (locationSide === "start" || locationSide === "end")
+  ) {
+    return { eventId, locationSide };
+  }
+
+  return undefined;
+}
+
+function getFallbackLocationSide(targetEvent: TimelineEventCard): LocationSide {
+  if (!targetEvent.startLocation) {
+    return "start";
+  }
+
+  if (!targetEvent.endLocation) {
+    return "end";
+  }
+
+  return "end";
+}
+
 function formatEventDate(value: string) {
   return new Intl.DateTimeFormat("es-MX", {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
+}
+
+function DraggableLocationCard({
+  location,
+  active,
+}: {
+  location: { id: string; name: string };
+  active?: boolean;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: `location:${location.id}`,
+    data: {
+      locationId: location.id,
+    },
+  });
+
+  const style = transform
+    ? {
+        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
+      }
+    : undefined;
+
+  return (
+    <button
+      ref={setNodeRef}
+      type="button"
+      style={style}
+      {...listeners}
+      {...attributes}
+      className={clsx(
+        "flex w-full cursor-grab touch-none select-none items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition active:cursor-grabbing",
+        active || isDragging
+          ? "border-accent bg-accent/10"
+          : "border-line bg-surface hover:border-accent hover:bg-canvas/70",
+        isDragging && "opacity-0",
+      )}
+    >
+      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-canvas text-xs font-semibold text-muted">
+        LO
+      </span>
+      <span className="block min-w-0 flex-1 truncate text-sm font-semibold text-ink">
+        {location.name}
+      </span>
+    </button>
+  );
 }
 
 function DraggableCharacterCard({
@@ -102,10 +196,11 @@ function DraggableCharacterCard({
       {...listeners}
       {...attributes}
       className={clsx(
-        "flex w-full items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition",
+        "flex w-full cursor-grab touch-none select-none items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition active:cursor-grabbing",
         active || isDragging
           ? "border-accent bg-accent/10"
           : "border-line bg-surface hover:border-accent hover:bg-canvas/70",
+        isDragging && "opacity-0",
       )}
     >
       <span
@@ -121,6 +216,40 @@ function DraggableCharacterCard({
         </span>
       </span>
     </button>
+  );
+}
+
+function LocationDropTarget({
+  event,
+  side,
+}: {
+  event: TimelineEventCard;
+  side: LocationSide;
+}) {
+  const { isOver, setNodeRef } = useDroppable({
+    id: `event:${event.id}:location:${side}`,
+    data: {
+      eventId: event.id,
+      locationSide: side,
+    },
+  });
+  const location = side === "start" ? event.startLocation : event.endLocation;
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={clsx(
+        "min-w-40 flex-1 rounded-[18px] border px-3 py-2 transition",
+        isOver ? "border-accent bg-accent/10" : "border-line bg-canvas/70",
+      )}
+    >
+      <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-muted">
+        {side === "start" ? "Inicio" : "Fin"}
+      </p>
+      <p className="mt-1 truncate text-sm font-semibold text-ink">
+        {location?.name ?? "Sin locacion"}
+      </p>
+    </div>
   );
 }
 
@@ -167,12 +296,10 @@ function TimelineDropZone({
           </p>
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           {event.chapterOrEpisode ? <Badge>{event.chapterOrEpisode}</Badge> : null}
-          {event.startLocation ? <Badge>{event.startLocation.name}</Badge> : null}
-          {event.endLocation && event.endLocation.id !== event.startLocation?.id ? (
-            <Badge>{event.endLocation.name}</Badge>
-          ) : null}
+          <LocationDropTarget event={event} side="start" />
+          <LocationDropTarget event={event} side="end" />
         </div>
       </div>
 
@@ -234,6 +361,7 @@ export function TimelineBoard({
   const [locationFilter, setLocationFilter] = useState("all");
   const [chapterFilter, setChapterFilter] = useState("all");
   const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
+  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState(events);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -290,6 +418,31 @@ export function TimelineBoard({
     activeCharacterId === null
       ? null
       : characters.find((character) => character.id === activeCharacterId) ?? null;
+
+  const activeLocation =
+    activeLocationId === null
+      ? null
+      : availableLocations.find((location) => location.id === activeLocationId) ?? null;
+
+  function handleCreateBlankEvent() {
+    setBusyKey("create:event");
+    setFeedback({ tone: "info", message: "Creando evento..." });
+
+    startTransition(async () => {
+      try {
+        await createBlankTimelineEventAction({ projectId });
+        setFeedback({ tone: "success", message: "Evento creado." });
+        router.refresh();
+      } catch (error) {
+        setFeedback({
+          tone: "error",
+          message: getErrorMessage(error, "No pudimos crear el evento."),
+        });
+      } finally {
+        setBusyKey(null);
+      }
+    });
+  }
 
   function handleAssign(characterId: string, eventId: string) {
     const key = `${eventId}:${characterId}`;
@@ -349,6 +502,59 @@ export function TimelineBoard({
     });
   }
 
+  function handleAssignLocation(locationId: string, eventId: string, locationSide: LocationSide) {
+    const key = `location:${eventId}:${locationSide}`;
+    const targetEvent = timelineEvents.find((event) => event.id === eventId);
+    const location = availableLocations.find((currentLocation) => currentLocation.id === locationId);
+
+    if (!targetEvent || !location) {
+      setFeedback({
+        tone: "error",
+        message: "No pudimos identificar el evento o la locacion seleccionada.",
+      });
+      return;
+    }
+
+    const previousEvents = timelineEvents;
+    const locationValue = { id: location.id, name: location.name };
+
+    setBusyKey(key);
+    setFeedback({ tone: "info", message: "Asignando locacion al evento..." });
+    setTimelineEvents((currentEvents) =>
+      currentEvents.map((event) =>
+        event.id === eventId
+          ? {
+              ...event,
+              startLocation:
+                locationSide === "start" ? locationValue : event.startLocation,
+              endLocation: locationSide === "end" ? locationValue : event.endLocation,
+            }
+          : event,
+      ),
+    );
+
+    startTransition(async () => {
+      try {
+        await assignLocationToEventAction({
+          projectId,
+          eventId,
+          locationId,
+          side: locationSide,
+        });
+        setFeedback({ tone: "success", message: "Locacion asignada al evento." });
+        router.refresh();
+      } catch (error) {
+        setTimelineEvents(previousEvents);
+        setFeedback({
+          tone: "error",
+          message: getErrorMessage(error, "No pudimos asignar la locacion al evento."),
+        });
+      } finally {
+        setBusyKey(null);
+      }
+    });
+  }
+
   function handleRemove(eventId: string, characterId: string) {
     const key = `${eventId}:${characterId}`;
     const previousEvents = timelineEvents;
@@ -386,9 +592,30 @@ export function TimelineBoard({
 
   function handleDragEnd(event: DragEndEvent) {
     setActiveCharacterId(null);
+    setActiveLocationId(null);
 
     const characterId = event.active.data.current?.characterId as string | undefined;
+    const locationId = event.active.data.current?.locationId as string | undefined;
     const eventId = getDroppedEventId(event);
+
+    if (locationId) {
+      const locationTarget = getDroppedLocationTarget(event);
+
+      if (locationTarget) {
+        handleAssignLocation(locationId, locationTarget.eventId, locationTarget.locationSide);
+        return;
+      }
+
+      if (eventId) {
+        const targetEvent = timelineEvents.find((currentEvent) => currentEvent.id === eventId);
+
+        if (targetEvent) {
+          handleAssignLocation(locationId, eventId, getFallbackLocationSide(targetEvent));
+        }
+      }
+
+      return;
+    }
 
     if (!characterId || !eventId) {
       return;
@@ -403,9 +630,14 @@ export function TimelineBoard({
       sensors={sensors}
       onDragStart={(event) => {
         const characterId = event.active.data.current?.characterId as string | undefined;
+        const locationId = event.active.data.current?.locationId as string | undefined;
         setActiveCharacterId(characterId ?? null);
+        setActiveLocationId(locationId ?? null);
       }}
-      onDragCancel={() => setActiveCharacterId(null)}
+      onDragCancel={() => {
+        setActiveCharacterId(null);
+        setActiveLocationId(null);
+      }}
       onDragEnd={handleDragEnd}
     >
       <div className="space-y-6">
@@ -449,6 +681,16 @@ export function TimelineBoard({
                 </Button>
               </div>
             </div>
+
+            <Button
+              type="button"
+              onClick={handleCreateBlankEvent}
+              disabled={busyKey === "create:event"}
+              className="gap-2"
+            >
+              <Plus aria-hidden="true" size={16} />
+              Nuevo evento
+            </Button>
 
             <label className="min-w-40">
               <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
@@ -495,30 +737,60 @@ export function TimelineBoard({
         </section>
 
         <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="rounded-[28px] border border-line bg-surface p-5">
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                  Paleta
-                </p>
-                <h3 className="mt-2 text-lg font-semibold">Personajes arrastrables</h3>
+          <aside className="space-y-4">
+            <div className="rounded-[28px] border border-line bg-surface p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                    Paleta
+                  </p>
+                  <h3 className="mt-2 text-lg font-semibold">Personajes</h3>
+                </div>
+                <Badge>{characters.length}</Badge>
               </div>
-              <Badge>{characters.length}</Badge>
+
+              <div className="mt-5 space-y-3">
+                {characters.map((character) => (
+                  <DraggableCharacterCard
+                    key={character.id}
+                    character={character}
+                    active={activeCharacterId === character.id}
+                  />
+                ))}
+              </div>
             </div>
 
-            <div className="mt-5 space-y-3">
-              {characters.map((character) => (
-                <DraggableCharacterCard
-                  key={character.id}
-                  character={character}
-                  active={activeCharacterId === character.id}
-                />
-              ))}
+            <div className="rounded-[28px] border border-line bg-surface p-5">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                    Locaciones
+                  </p>
+                  <h3 className="mt-2 text-lg font-semibold">Arrastrables</h3>
+                </div>
+                <Badge>{availableLocations.length}</Badge>
+              </div>
+
+              <div className="mt-5 space-y-3">
+                {availableLocations.length === 0 ? (
+                  <p className="rounded-[20px] border border-dashed border-line bg-canvas/60 p-4 text-sm text-muted">
+                    Sin locaciones en este proyecto.
+                  </p>
+                ) : (
+                  availableLocations.map((location) => (
+                    <DraggableLocationCard
+                      key={location.id}
+                      location={location}
+                      active={activeLocationId === location.id}
+                    />
+                  ))
+                )}
+              </div>
             </div>
           </aside>
 
           <section className="space-y-4">
-              {filteredEvents.length === 0 ? (
+            {filteredEvents.length === 0 ? (
               <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
                 Ningún evento coincide con los filtros actuales.
               </div>
@@ -549,6 +821,20 @@ export function TimelineBoard({
                 <p className="text-sm font-semibold text-ink">{activeCharacter.name}</p>
                 <p className="text-xs text-muted">
                   Suelta sobre un evento para asignarlo
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : activeLocation ? (
+          <div className="w-64 rounded-[20px] border border-accent bg-surface p-3 shadow-[0_18px_50px_rgba(91,71,36,0.18)]">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-canvas text-xs font-semibold text-muted">
+                LO
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-ink">{activeLocation.name}</p>
+                <p className="text-xs text-muted">
+                  Suelta en Inicio o Fin
                 </p>
               </div>
             </div>

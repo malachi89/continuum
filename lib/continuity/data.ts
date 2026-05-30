@@ -76,6 +76,41 @@ export async function getOwnedProjectLocations(projectId: string) {
   });
 }
 
+export async function getOwnedProjectLocation(projectId: string, locationId: string) {
+  const user = await requireCurrentUser();
+
+  const location = await prisma.location.findFirst({
+    where: {
+      id: locationId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    include: {
+      project: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+        },
+      },
+      _count: {
+        select: {
+          startEvents: true,
+          endEvents: true,
+        },
+      },
+    },
+  });
+
+  if (!location) {
+    notFound();
+  }
+
+  return location;
+}
+
 export async function getOwnedProjectEvents(projectId: string) {
   await getOwnedProject(projectId);
 
@@ -97,6 +132,47 @@ export async function getOwnedProjectEvents(projectId: string) {
       },
     },
   });
+}
+
+export async function getOwnedProjectEvent(projectId: string, eventId: string) {
+  const user = await requireCurrentUser();
+
+  const event = await prisma.event.findFirst({
+    where: {
+      id: eventId,
+      projectId,
+      project: {
+        ownerId: user.id,
+      },
+    },
+    include: {
+      project: {
+        select: {
+          id: true,
+          title: true,
+          type: true,
+        },
+      },
+      startLocation: true,
+      endLocation: true,
+      characters: {
+        include: {
+          character: true,
+        },
+        orderBy: {
+          character: {
+            name: "asc",
+          },
+        },
+      },
+    },
+  });
+
+  if (!event) {
+    notFound();
+  }
+
+  return event;
 }
 
 export async function getOwnedProjectTimeline(projectId: string) {

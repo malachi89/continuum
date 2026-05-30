@@ -1,6 +1,5 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
-import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getOwnedProject } from "@/lib/continuity/data";
 
 export default async function ProjectLayout({
@@ -15,7 +14,7 @@ export default async function ProjectLayout({
 
   return (
     <div className="space-y-6">
-      <section className="sticky top-4 z-20 rounded-[28px] border border-line bg-surface/95 p-6 shadow-[0_18px_50px_rgba(91,71,36,0.1)] backdrop-blur">
+      <section className="rounded-[28px] border border-line bg-surface p-6">
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
@@ -40,9 +39,6 @@ export default async function ProjectLayout({
           </div>
         </div>
 
-        <div className="mt-6">
-          <ProjectWorkspaceNav projectId={projectId} />
-        </div>
       </section>
 
       {children}

@@ -21,7 +21,7 @@ export function ProjectRoutePicker({
   projects,
 }: {
   title: string;
-  description: string;
+  description?: string;
   routeSuffix:
     | "/characters"
     | "/locations"
@@ -48,7 +48,9 @@ export function ProjectRoutePicker({
       <div className="rounded-[28px] border border-line bg-surface/80 p-6">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Ruta</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight">{title}</h2>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{description}</p>
+        {description ? (
+          <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{description}</p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 xl:grid-cols-2">
