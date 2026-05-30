@@ -752,28 +752,6 @@ export async function deleteEventAction(formData: FormData) {
   redirect(redirectTo);
 }
 
-export async function createBlankTimelineEventAction(input: { projectId: string }) {
-  const user = await requireCurrentUser();
-
-  await getOwnedProjectOrThrow(input.projectId, user.id);
-
-  const now = new Date();
-  const event = await prisma.event.create({
-    data: {
-      projectId: input.projectId,
-      title: "Evento sin titulo",
-      internalStart: now,
-      internalEnd: now,
-      eventType: EventType.SCENE,
-    },
-    select: { id: true },
-  });
-
-  refreshProjectRoutes(input.projectId);
-
-  return { eventId: event.id };
-}
-
 export async function assignCharacterToEventAction(input: {
   projectId: string;
   eventId: string;

@@ -7,7 +7,7 @@ export default async function EventsPage() {
   return (
     <ProjectRoutePicker
       title="Eventos"
-      description="Selecciona el proyecto donde quieres abrir el editor rapido de eventos y sus relaciones con personajes."
+      description="Selecciona el proyecto donde quieres crear, editar y vincular eventos con personajes."
       routeSuffix="/events"
       projects={projects}
     />

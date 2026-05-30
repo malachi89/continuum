@@ -15,13 +15,11 @@ import {
 } from "@dnd-kit/core";
 import clsx from "clsx";
 import Link from "next/link";
-import { Plus } from "lucide-react";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   assignLocationToEventAction,
   assignCharacterToEventAction,
-  createBlankTimelineEventAction,
   removeCharacterFromEventAction,
 } from "@/app/(app)/projects/actions";
 import type {
@@ -424,26 +422,6 @@ export function TimelineBoard({
       ? null
       : availableLocations.find((location) => location.id === activeLocationId) ?? null;
 
-  function handleCreateBlankEvent() {
-    setBusyKey("create:event");
-    setFeedback({ tone: "info", message: "Creando evento..." });
-
-    startTransition(async () => {
-      try {
-        await createBlankTimelineEventAction({ projectId });
-        setFeedback({ tone: "success", message: "Evento creado." });
-        router.refresh();
-      } catch (error) {
-        setFeedback({
-          tone: "error",
-          message: getErrorMessage(error, "No pudimos crear el evento."),
-        });
-      } finally {
-        setBusyKey(null);
-      }
-    });
-  }
-
   function handleAssign(characterId: string, eventId: string) {
     const key = `${eventId}:${characterId}`;
     const targetEvent = timelineEvents.find((event) => event.id === eventId);
@@ -681,16 +659,6 @@ export function TimelineBoard({
                 </Button>
               </div>
             </div>
-
-            <Button
-              type="button"
-              onClick={handleCreateBlankEvent}
-              disabled={busyKey === "create:event"}
-              className="gap-2"
-            >
-              <Plus aria-hidden="true" size={16} />
-              Nuevo evento
-            </Button>
 
             <label className="min-w-40">
               <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
