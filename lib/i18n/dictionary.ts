@@ -7,7 +7,7 @@ export const dictionary = {
     account: "Cuenta",
     analysis: "Análisis",
     analysisDescription: "Cruces, banderas de continuidad y validaciones editoriales.",
-    bootstrapReady: "Base técnica lista para crecer",
+    bootstrapReady: "Listo",
     characters: "Personajes",
     charactersDescription: "Relaciona perfiles, apariciones y cambios relevantes.",
     closeMenu: "Cerrar menu",
@@ -20,14 +20,14 @@ export const dictionary = {
     exportImportDescription:
       "Prepara respaldos, intercambio de datos y paquetes portables.",
     homeDescription:
-      "El shell inicial ya separa las áreas clave del tracker, lista el stack base y deja listo el punto de partida para autenticación, modelo de datos y CRUD.",
-    homeTitle: "Continuity Tracker arranca con una estructura clara y en español.",
+      "Abre un proyecto para revisar personajes, eventos, locaciones, timeline y señales de continuidad.",
+    homeTitle: "Continuity Tracker",
     language: "Idioma",
     locations: "Locaciones",
     locationsDescription: "Centraliza lugares, reglas internas y notas visuales.",
     moduleGridBody:
-      "Cada modulo ya tiene su entrada y una pagina placeholder para que la siguiente fase se enfoque en comportamiento, no en estructura.",
-    moduleGridTitle: "Mapa inicial del producto",
+      "Accesos directos a las areas principales del proyecto.",
+    moduleGridTitle: "Areas de trabajo",
     modules: "Modulos",
     openMenu: "Abrir menu",
     openProjects: "Abrir proyectos",
@@ -35,13 +35,13 @@ export const dictionary = {
     projects: "Proyectos",
     projectsDescription: "Configura universos, series o clientes con sus reglas base.",
     shellCardBody:
-      "Navegacion lateral, layout estable y area principal lista para crecer por modulo.",
-    shellCardTitle: "Shell de la aplicación",
+      "Navegacion lateral, layout estable y area principal.",
+    shellCardTitle: "Aplicacion",
     shellIntro:
       "Base de trabajo para controlar continuidad narrativa, personajes, eventos y analisis editorial.",
     stackCardBody:
-      "Next.js, TypeScript, Tailwind, Prisma, SQLite y Vitest quedaron conectados desde el primer paso.",
-    stackCardTitle: "Stack preparado",
+      "Herramientas internas del proyecto.",
+    stackCardTitle: "Sistema",
     signOut: "Salir",
     timeline: "Línea de tiempo",
     timelineDescription: "Visualiza secuencias, orden temporal y conflictos de canon.",
@@ -52,7 +52,7 @@ export const dictionary = {
     account: "Account",
     analysis: "Analysis",
     analysisDescription: "Cross-checks, continuity flags, and editorial validation.",
-    bootstrapReady: "Technical foundation ready to grow",
+    bootstrapReady: "Ready",
     characters: "Characters",
     charactersDescription: "Track profiles, appearances, and relevant changes.",
     closeMenu: "Close menu",
@@ -65,14 +65,14 @@ export const dictionary = {
     exportImportDescription:
       "Prepare backups, data exchange, and portable packages.",
     homeDescription:
-      "The initial shell already separates the key tracker areas, lists the base stack, and leaves a clean starting point for auth, data modeling, and CRUD.",
-    homeTitle: "Continuity Tracker starts with a clear bilingual structure.",
+      "Open a project to review characters, events, locations, timeline, and continuity signals.",
+    homeTitle: "Continuity Tracker",
     language: "Language",
     locations: "Locations",
     locationsDescription: "Centralize places, internal rules, and visual notes.",
     moduleGridBody:
-      "Each module already has an entry point and a placeholder page, so the next phase can focus on behavior instead of structure.",
-    moduleGridTitle: "Initial product map",
+      "Shortcuts to the main project areas.",
+    moduleGridTitle: "Work areas",
     modules: "Modules",
     openMenu: "Open menu",
     openProjects: "Open projects",
@@ -80,13 +80,13 @@ export const dictionary = {
     projects: "Projects",
     projectsDescription: "Configure universes, series, or clients with base rules.",
     shellCardBody:
-      "Sidebar navigation, a stable layout, and a main area ready to grow per module.",
-    shellCardTitle: "Application shell",
+      "Sidebar navigation, a stable layout, and the main workspace.",
+    shellCardTitle: "Application",
     shellIntro:
       "Working foundation for tracking narrative continuity, characters, events, and editorial analysis.",
     stackCardBody:
-      "Next.js, TypeScript, Tailwind, Prisma, SQLite, and Vitest are wired in from the first step.",
-    stackCardTitle: "Prepared stack",
+      "Internal project tools.",
+    stackCardTitle: "System",
     signOut: "Sign out",
     timeline: "Timeline",
     timelineDescription: "Visualize sequences, time order, and canon conflicts.",

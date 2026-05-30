@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { ArrowRight, CheckCircle2, Database, LayoutPanelTop } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { navigationItems } from "@/lib/continuity/navigation";
 
@@ -10,48 +10,27 @@ export function HomePage() {
 
   return (
     <div className="space-y-6">
-      <section className="grid gap-5 lg:grid-cols-[1.4fr_0.9fr]">
-        <div className="rounded-[28px] bg-[linear-gradient(135deg,#1f1c17_0%,#3b3429_54%,#8f3e1d_100%)] p-7 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
-          <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/65">
-            Fase 01
-          </p>
-          <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
+      <section className="rounded-[28px] border border-line bg-surface p-6">
+        <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+              {t("workspace")}
+            </p>
+            <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight">
             {t("homeTitle")}
           </h2>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-white/78 md:text-base">
+            <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">
             {t("homeDescription")}
           </p>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/projects"
-              className="inline-flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-semibold text-ink transition hover:bg-surface-strong"
-            >
-              {t("openProjects")}
-              <ArrowRight size={16} />
-            </Link>
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/15 px-5 py-3 text-sm text-white/80">
-              <CheckCircle2 size={16} />
-              {t("bootstrapReady")}
-            </div>
           </div>
-        </div>
 
-        <div className="grid gap-4">
-          <article className="rounded-[28px] border border-line bg-canvas/80 p-5">
-            <LayoutPanelTop className="text-accent" size={22} />
-            <h3 className="mt-4 text-lg font-semibold">{t("shellCardTitle")}</h3>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {t("shellCardBody")}
-            </p>
-          </article>
-          <article className="rounded-[28px] border border-line bg-canvas/80 p-5">
-            <Database className="text-success" size={22} />
-            <h3 className="mt-4 text-lg font-semibold">{t("stackCardTitle")}</h3>
-            <p className="mt-2 text-sm leading-6 text-muted">
-              {t("stackCardBody")}
-            </p>
-          </article>
+          <Link
+            href="/projects"
+            className="inline-flex w-fit items-center gap-2 rounded-full bg-ink px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent"
+          >
+            {t("openProjects")}
+            <ArrowRight size={16} />
+          </Link>
         </div>
       </section>
 
