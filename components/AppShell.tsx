@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Languages, PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
 import { useState } from "react";
 import clsx from "clsx";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
@@ -26,7 +26,7 @@ export function AppShell({
       <div className="mx-auto flex min-h-screen max-w-7xl gap-4 px-4 py-4 lg:px-6">
         <aside
           className={clsx(
-            "fixed inset-y-4 left-4 z-30 w-72 rounded-[28px] border border-line bg-surface px-5 py-5 shadow-[0_22px_70px_rgba(91,71,36,0.12)] transition-transform lg:static lg:translate-x-0",
+            "fixed inset-y-4 left-4 z-30 flex w-72 flex-col overflow-y-auto rounded-[28px] border border-line bg-surface px-5 py-5 shadow-[0_22px_70px_rgba(91,71,36,0.12)] transition-transform lg:static lg:translate-x-0",
             isNavOpen ? "translate-x-0" : "-translate-x-[120%]",
           )}
         >
@@ -50,6 +50,15 @@ export function AppShell({
           </div>
 
           <p className="mt-5 text-sm leading-6 text-muted">{t("shellIntro")}</p>
+
+          <div className="mt-6 rounded-2xl border border-line bg-canvas/80 p-4">
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+              {t("workspace")}
+            </p>
+            <p className="mt-2 text-sm font-semibold text-ink">
+              {t("workspaceName")}
+            </p>
+          </div>
 
           <nav className="mt-8 space-y-2">
             {navigationItems.map((item) => {
@@ -75,69 +84,63 @@ export function AppShell({
             })}
           </nav>
 
-          <div className="mt-8 rounded-2xl border border-line bg-canvas/80 p-4">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-              {t("language")}
-            </p>
-            <div className="mt-3 grid grid-cols-2 gap-2">
-              {(["es", "en"] as const).map((option) => {
-                const active = language === option;
-                return (
-                  <button
-                    key={option}
-                    type="button"
-                    onClick={() => setLanguage(option)}
-                    className={clsx(
-                      "rounded-xl px-3 py-2 text-sm font-semibold uppercase transition",
-                      active
-                        ? "bg-ink text-surface"
-                        : "bg-surface text-muted hover:bg-surface-strong hover:text-ink",
-                    )}
-                  >
-                    {option}
-                  </button>
-                );
-              })}
+          <div className="mt-auto space-y-4 pt-8">
+            <div className="rounded-2xl border border-line bg-canvas/80 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                  {t("language")}
+                </p>
+                <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase text-ink">
+                  {language.toUpperCase()}
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                {(["es", "en"] as const).map((option) => {
+                  const active = language === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setLanguage(option)}
+                      className={clsx(
+                        "rounded-xl px-3 py-2 text-sm font-semibold uppercase transition",
+                        active
+                          ? "bg-ink text-surface"
+                          : "bg-surface text-muted hover:bg-surface-strong hover:text-ink",
+                      )}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-line bg-canvas/80 p-4">
+              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                {t("account")}
+              </p>
+              <p className="mt-2 break-words text-sm font-medium leading-6 text-ink">
+                {currentUser.name} · {currentUser.email}
+              </p>
+              <div className="mt-4">
+                <LogoutButton className="w-full" />
+              </div>
             </div>
           </div>
         </aside>
 
         <div className="flex min-h-[calc(100vh-2rem)] flex-1 flex-col rounded-[32px] border border-line bg-surface/90 shadow-[0_18px_60px_rgba(91,71,36,0.08)] backdrop-blur">
-          <header className="flex items-center justify-between border-b border-line px-5 py-4 md:px-8">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={() => setIsNavOpen(true)}
-                className="rounded-full border border-line p-2 text-muted lg:hidden"
-                aria-label={t("openMenu")}
-              >
-                <PanelLeftOpen size={18} />
-              </button>
-              <div>
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                  {t("workspace")}
-                </p>
-                <p className="text-sm font-medium text-ink">{t("workspaceName")}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3 rounded-full border border-line bg-canvas/80 px-3 py-2 text-sm text-muted">
-              <Languages size={16} />
-              <span>{language.toUpperCase()}</span>
-            </div>
+          <header className="border-b border-line px-5 py-4 md:px-8 lg:hidden">
+            <button
+              type="button"
+              onClick={() => setIsNavOpen(true)}
+              className="rounded-full border border-line p-2 text-muted"
+              aria-label={t("openMenu")}
+            >
+              <PanelLeftOpen size={18} />
+            </button>
           </header>
-
-          <div className="flex items-center justify-between gap-4 border-b border-line px-5 py-4 md:px-8">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                {t("account")}
-              </p>
-              <p className="mt-1 text-sm font-medium text-ink">
-                {currentUser.name} · {currentUser.email}
-              </p>
-            </div>
-            <LogoutButton />
-          </div>
 
           <main className="flex-1 px-5 py-6 md:px-8 md:py-8">{children}</main>
         </div>
