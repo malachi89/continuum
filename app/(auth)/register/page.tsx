@@ -13,28 +13,28 @@ export default async function RegisterPage() {
   return (
     <AuthForm
       action={registerAction}
-      title="Create your workspace account"
-      description="Register with name, email, and password so each user can manage their own projects."
-      submitLabel="Create account"
-      footerText="Already have an account?"
-      footerLinkLabel="Sign in"
+      title="Crear cuenta"
+      description="Regístrate con nombre, correo y contraseña para administrar tus propios proyectos."
+      submitLabel="Crear cuenta"
+      footerText="¿Ya tienes cuenta?"
+      footerLinkLabel="Iniciar sesión"
       footerHref="/login"
       fields={[
         {
           name: "name",
-          label: "Name",
+          label: "Nombre",
           type: "text",
           autoComplete: "name",
         },
         {
           name: "email",
-          label: "Email",
+          label: "Correo",
           type: "email",
           autoComplete: "email",
         },
         {
           name: "password",
-          label: "Password",
+          label: "Contraseña",
           type: "password",
           autoComplete: "new-password",
         },

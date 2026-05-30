@@ -19,7 +19,7 @@ export default async function ProjectImportExportPage({
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
               Exportar
             </p>
-            <h3 className="mt-3 text-2xl font-semibold">Bundle JSON portable</h3>
+            <h3 className="mt-3 text-2xl font-semibold">Paquete JSON portable</h3>
             <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
               Este bloque contiene proyecto, personajes, locaciones, eventos y relaciones
               evento-personaje del proyecto actual.

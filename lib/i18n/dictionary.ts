@@ -5,9 +5,9 @@ export const defaultLanguage: Language = "es";
 export const dictionary = {
   es: {
     account: "Cuenta",
-    analysis: "Analisis",
-    analysisDescription: "Cruces, banderas de continuidad y chequeos editoriales.",
-    bootstrapReady: "Base tecnica lista para crecer",
+    analysis: "Análisis",
+    analysisDescription: "Cruces, banderas de continuidad y validaciones editoriales.",
+    bootstrapReady: "Base técnica lista para crecer",
     characters: "Personajes",
     charactersDescription: "Relaciona perfiles, apariciones y cambios relevantes.",
     closeMenu: "Cerrar menu",
@@ -16,12 +16,12 @@ export const dictionary = {
       "Aqui dejaremos el espacio para la funcionalidad real cuando avancemos a los modulos CRUD y de analisis.",
     events: "Eventos",
     eventsDescription: "Ordena escenas, hechos canon y dependencias narrativas.",
-    exportImport: "Exportar/importar",
+    exportImport: "Exportar / importar",
     exportImportDescription:
       "Prepara respaldos, intercambio de datos y paquetes portables.",
     homeDescription:
-      "El shell inicial ya separa las areas clave del tracker, lista el stack base y deja listo el punto de partida para autenticacion, modelo de datos y CRUD.",
-    homeTitle: "Continuity Tracker arranca con una estructura clara y bilingue.",
+      "El shell inicial ya separa las áreas clave del tracker, lista el stack base y deja listo el punto de partida para autenticación, modelo de datos y CRUD.",
+    homeTitle: "Continuity Tracker arranca con una estructura clara y en español.",
     language: "Idioma",
     locations: "Locaciones",
     locationsDescription: "Centraliza lugares, reglas internas y notas visuales.",
@@ -36,17 +36,17 @@ export const dictionary = {
     projectsDescription: "Configura universos, series o clientes con sus reglas base.",
     shellCardBody:
       "Navegacion lateral, layout estable y area principal lista para crecer por modulo.",
-    shellCardTitle: "Shell de aplicacion",
+    shellCardTitle: "Shell de la aplicación",
     shellIntro:
       "Base de trabajo para controlar continuidad narrativa, personajes, eventos y analisis editorial.",
     stackCardBody:
       "Next.js, TypeScript, Tailwind, Prisma, SQLite y Vitest quedaron conectados desde el primer paso.",
     stackCardTitle: "Stack preparado",
     signOut: "Salir",
-    timeline: "Timeline",
+    timeline: "Línea de tiempo",
     timelineDescription: "Visualiza secuencias, orden temporal y conflictos de canon.",
-    workspace: "Workspace",
-    workspaceName: "Continuity Tracker / Bootstrap",
+    workspace: "Espacio de trabajo",
+    workspaceName: "Continuity Tracker / Base",
   },
   en: {
     account: "Account",

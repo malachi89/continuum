@@ -13,7 +13,7 @@ export default async function ProjectsPage() {
       <section className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
         <div className="rounded-[28px] border border-line bg-surface p-6">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-            Dashboard
+            Tablero
           </p>
           <h2 className="mt-3 text-3xl font-semibold tracking-tight">Proyectos</h2>
           <p className="mt-3 max-w-2xl text-sm leading-6 text-muted">

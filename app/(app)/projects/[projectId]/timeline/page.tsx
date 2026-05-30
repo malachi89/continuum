@@ -15,7 +15,7 @@ export default async function ProjectTimelinePage({
     return (
       <EmptyState
         eyebrow="TL"
-        title="Todavia no hay eventos para esta timeline"
+        title="Todavía no hay eventos para esta línea de tiempo"
         body={`Crea eventos dentro de ${project.title} y luego usa esta vista para filtrar, ordenar y asignar personajes.`}
         actionLabel="Ir a eventos"
         actionHref={`/projects/${projectId}/events`}
@@ -27,7 +27,7 @@ export default async function ProjectTimelinePage({
     <section className="space-y-6">
       <div className="rounded-[28px] border border-line bg-surface p-6">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-          Timeline
+          Línea de tiempo
         </p>
         <h3 className="mt-3 text-2xl font-semibold">Seguimiento temporal de {project.title}</h3>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">

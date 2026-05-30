@@ -317,7 +317,7 @@ export function TimelineBoard({
                   variant={sortMode === "chronological" ? "primary" : "secondary"}
                   onClick={() => setSortMode("chronological")}
                 >
-                  Cronologico
+                  Cronológico
                 </Button>
                 <Button
                   type="button"
@@ -397,9 +397,9 @@ export function TimelineBoard({
           </aside>
 
           <section className="space-y-4">
-            {filteredEvents.length === 0 ? (
+              {filteredEvents.length === 0 ? (
               <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
-                Ningun evento coincide con los filtros actuales.
+                Ningún evento coincide con los filtros actuales.
               </div>
             ) : (
               filteredEvents.map((event) => (

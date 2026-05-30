@@ -42,7 +42,7 @@ export default async function ProjectSummaryPage({
               </p>
               <h3 className="mt-3 text-2xl font-semibold">Pulso del proyecto</h3>
             </div>
-            <Badge tone="success">Owner scope ok</Badge>
+            <Badge tone="success">Alcance del propietario verificado</Badge>
           </div>
 
           <div className="mt-6 grid gap-4 md:grid-cols-3">

@@ -6,8 +6,8 @@ export default async function AnalysisPage() {
 
   return (
     <ProjectRoutePicker
-      title="Analisis"
-      description="Selecciona un proyecto para correr el motor de continuidad y revisar errores, warnings y notas editoriales."
+      title="Análisis"
+      description="Selecciona un proyecto para correr el motor de continuidad y revisar errores, advertencias y notas editoriales."
       routeSuffix="/analysis"
       projects={projects}
     />

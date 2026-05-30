@@ -43,7 +43,7 @@ export default async function ProjectAnalysisPage({
       <EmptyState
         eyebrow="AN"
         title="No encontramos inconsistencias"
-        body={`El proyecto ${project.title} no generó errores, warnings ni notas con las reglas actuales.`}
+        body={`El proyecto ${project.title} no generó errores, advertencias ni notas con las reglas actuales.`}
       />
     );
   }
@@ -52,18 +52,18 @@ export default async function ProjectAnalysisPage({
     <div className="space-y-6">
       <section className="rounded-[28px] border border-line bg-surface p-6">
         <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-          Analisis
+          Análisis
         </p>
         <h3 className="mt-3 text-2xl font-semibold">Motor de continuidad de {project.title}</h3>
         <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
           El motor corre fuera de Prisma y Next sobre datos serializables, para detectar
-          errores duros, warnings editoriales y notas de seguimiento.
+          errores duros, advertencias editoriales y notas de seguimiento.
         </p>
 
         <div className="mt-5 flex flex-wrap gap-2">
-          <Badge tone="accent">{counts.ERROR} errors</Badge>
-          <Badge>{counts.WARNING} warnings</Badge>
-          <Badge tone="success">{counts.NOTE} notes</Badge>
+          <Badge tone="accent">{counts.ERROR} errores</Badge>
+          <Badge>{counts.WARNING} advertencias</Badge>
+          <Badge tone="success">{counts.NOTE} notas</Badge>
         </div>
 
         <div className="mt-5 flex flex-wrap gap-2">
@@ -71,13 +71,13 @@ export default async function ProjectAnalysisPage({
             <Button variant={severityFilter === "ALL" ? "primary" : "secondary"}>Todos</Button>
           </Link>
           <Link href={`/projects/${projectId}/analysis?severity=ERROR`}>
-            <Button variant={severityFilter === "ERROR" ? "primary" : "secondary"}>Errors</Button>
+            <Button variant={severityFilter === "ERROR" ? "primary" : "secondary"}>Errores</Button>
           </Link>
           <Link href={`/projects/${projectId}/analysis?severity=WARNING`}>
-            <Button variant={severityFilter === "WARNING" ? "primary" : "secondary"}>Warnings</Button>
+            <Button variant={severityFilter === "WARNING" ? "primary" : "secondary"}>Advertencias</Button>
           </Link>
           <Link href={`/projects/${projectId}/analysis?severity=NOTE`}>
-            <Button variant={severityFilter === "NOTE" ? "primary" : "secondary"}>Notes</Button>
+            <Button variant={severityFilter === "NOTE" ? "primary" : "secondary"}>Notas</Button>
           </Link>
         </div>
       </section>

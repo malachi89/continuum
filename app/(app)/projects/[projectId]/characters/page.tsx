@@ -39,7 +39,7 @@ export default async function ProjectCharactersPage({
       {characters.length === 0 ? (
         <EmptyState
           eyebrow="CH"
-          title="No hay personajes todavia"
+          title="No hay personajes todavía"
           body="Empieza con protagonistas, secundarios o testigos de continuidad para conectar los eventos del proyecto."
         />
       ) : (
@@ -66,7 +66,7 @@ export default async function ProjectCharactersPage({
 
               <div className="mt-4">
                 <Link href={`/projects/${projectId}/characters/${character.id}`}>
-                  <Button variant="secondary">Ver tracking individual</Button>
+                  <Button variant="secondary">Ver seguimiento individual</Button>
                 </Link>
               </div>
 

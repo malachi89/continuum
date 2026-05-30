@@ -32,7 +32,7 @@ export default async function CharacterTrackingPage({
             />
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                Tracking
+                Seguimiento
               </p>
               <h3 className="mt-2 text-2xl font-semibold">{character.name}</h3>
               <p className="mt-2 text-sm text-muted">
@@ -58,8 +58,8 @@ export default async function CharacterTrackingPage({
         <EmptyState
           eyebrow="CH"
           title="Este personaje todavia no aparece en eventos"
-          body="Puedes asignarlo desde el formulario de eventos o arrastrarlo dentro de la timeline del proyecto."
-          actionLabel="Abrir timeline"
+          body="Puedes asignarlo desde el formulario de eventos o arrastrarlo dentro de la línea de tiempo del proyecto."
+          actionLabel="Abrir línea de tiempo"
           actionHref={`/projects/${projectId}/timeline`}
         />
       ) : (
@@ -92,18 +92,18 @@ export default async function CharacterTrackingPage({
 
                     {index > 0 && item.gapLabel ? (
                       <div className="rounded-full border border-line bg-surface px-3 py-1 text-xs text-muted">
-                        Gap desde evento anterior: {item.gapLabel}
+                        Intervalo desde el evento anterior: {item.gapLabel}
                       </div>
                     ) : null}
                   </div>
 
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {item.startLocationName ? <Badge>{item.startLocationName}</Badge> : <Badge>Sin locacion inicial</Badge>}
+                    {item.startLocationName ? <Badge>{item.startLocationName}</Badge> : <Badge>Sin ubicación inicial</Badge>}
                     {item.endLocationName && item.endLocationName !== item.startLocationName ? (
                       <Badge>{item.endLocationName}</Badge>
                     ) : null}
                     {item.flags.map((flag) => (
-                      <Badge key={flag} tone={flag === "Superposicion" ? "accent" : "default"}>
+                      <Badge key={flag} tone={flag === "Superposición" ? "accent" : "default"}>
                         {flag}
                       </Badge>
                     ))}
@@ -119,7 +119,7 @@ export default async function CharacterTrackingPage({
                 <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
                   Conflictos
                 </p>
-                <h3 className="mt-2 text-xl font-semibold">Senales relevantes para este personaje</h3>
+                <h3 className="mt-2 text-xl font-semibold">Señales relevantes para este personaje</h3>
               </div>
               <Badge>{conflicts.length}</Badge>
             </div>
@@ -137,7 +137,7 @@ export default async function CharacterTrackingPage({
                   >
                     <div className="flex items-center gap-2">
                       <Badge tone={conflict.severity === "warning" ? "accent" : "default"}>
-                        {conflict.severity === "warning" ? "Warning" : "Info"}
+                        {conflict.severity === "warning" ? "Advertencia" : "Información"}
                       </Badge>
                       <h4 className="font-semibold">{conflict.title}</h4>
                     </div>

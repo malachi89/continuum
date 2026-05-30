@@ -13,22 +13,22 @@ export default async function LoginPage() {
   return (
     <AuthForm
       action={loginAction}
-      title="Welcome back"
-      description="Sign in with your local account to continue into your continuity workspace."
-      submitLabel="Sign in"
-      footerText="Need an account?"
-      footerLinkLabel="Register"
+      title="Iniciar sesión"
+      description="Accede con tu cuenta local para continuar en tu espacio de continuidad."
+      submitLabel="Entrar"
+      footerText="¿Necesitas una cuenta?"
+      footerLinkLabel="Registrarte"
       footerHref="/register"
       fields={[
         {
           name: "email",
-          label: "Email",
-          type: "email",
-          autoComplete: "email",
+          label: "Correo o usuario",
+          type: "text",
+          autoComplete: "username",
         },
         {
           name: "password",
-          label: "Password",
+          label: "Contraseña",
           type: "password",
           autoComplete: "current-password",
         },

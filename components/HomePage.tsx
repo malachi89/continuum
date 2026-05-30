@@ -13,7 +13,7 @@ export function HomePage() {
       <section className="grid gap-5 lg:grid-cols-[1.4fr_0.9fr]">
         <div className="rounded-[28px] bg-[linear-gradient(135deg,#1f1c17_0%,#3b3429_54%,#8f3e1d_100%)] p-7 text-white shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-white/65">
-            Phase 01
+            Fase 01
           </p>
           <h2 className="mt-3 max-w-xl text-3xl font-semibold tracking-tight md:text-4xl">
             {t("homeTitle")}

@@ -21,8 +21,23 @@ async function hashPassword(password: string) {
 }
 
 async function main() {
+  const adminEmail = "admin@continuity.local";
+  const adminPasswordHash = await hashPassword("admin");
   const email = "demo@continuity.local";
   const passwordHash = await hashPassword("continuity123");
+
+  await prisma.user.upsert({
+    where: { email: adminEmail },
+    update: {
+      name: "Admin",
+      passwordHash: adminPasswordHash,
+    },
+    create: {
+      name: "Admin",
+      email: adminEmail,
+      passwordHash: adminPasswordHash,
+    },
+  });
 
   const user = await prisma.user.upsert({
     where: { email },
