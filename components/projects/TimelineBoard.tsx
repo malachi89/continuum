@@ -3,9 +3,7 @@
 import clsx from "clsx";
 import { AlertTriangle, CircleAlert } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
-import { useRouter } from "next/navigation";
-import { removeCharacterFromEventAction } from "@/app/(app)/projects/actions";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type {
   TimelineBoardMode,
   TimelineScale,
@@ -35,10 +33,6 @@ type TimelineBoardProps = {
 };
 
 type SortMode = "chronological" | "narrative";
-type Feedback = {
-  tone: "info" | "error" | "success";
-  message: string;
-};
 
 const TRACK_LABEL_WIDTH = 220;
 const TRACK_CARD_HEIGHT = 168;
@@ -80,6 +74,8 @@ const copy = {
     locationTrackHeader: "Lugar",
     startLabel: "Inicio:",
     endLabel: "Fin:",
+    characterCount: (count: number) =>
+      `${count} ${count === 1 ? "personaje" : "personajes"}`,
     removeCharacterLabel: (characterName: string, eventTitle: string) =>
       `Quitar ${characterName} del evento ${eventTitle}`,
     removingCharacter: "Quitando personaje del evento...",
@@ -113,6 +109,8 @@ const copy = {
     locationTrackHeader: "Location",
     startLabel: "Start:",
     endLabel: "End:",
+    characterCount: (count: number) =>
+      `${count} ${count === 1 ? "character" : "characters"}`,
     removeCharacterLabel: (characterName: string, eventTitle: string) =>
       `Remove ${characterName} from event ${eventTitle}`,
     removingCharacter: "Removing character from event...",
@@ -122,10 +120,6 @@ const copy = {
 } as const;
 
 type TimelineCopy = (typeof copy)[keyof typeof copy];
-
-function getErrorMessage(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
-}
 
 function formatEventDate(value: string, locale: string) {
   return new Intl.DateTimeFormat(locale, {
@@ -234,7 +228,6 @@ function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
   return (
     <div
       tabIndex={0}
-      title={label}
       aria-label={label}
       className={clsx(
         "group absolute right-2 top-2 z-10 rounded-full border p-1 outline-none transition",
@@ -260,11 +253,59 @@ function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
   );
 }
 
+function CharacterRosterButton({
+  event,
+  projectId,
+  text,
+}: {
+  event: TimelineEventCard;
+  projectId: string;
+  text: TimelineCopy;
+}) {
+  if (event.characters.length === 0) {
+    return <Badge>{text.noCharacters}</Badge>;
+  }
+
+  return (
+    <div className="group/characters relative shrink-0">
+      <button
+        type="button"
+        className="inline-flex items-center rounded-full border border-line bg-canvas/80 px-2.5 py-1 text-[0.7rem] font-medium text-ink transition hover:border-accent hover:bg-surface focus-visible:border-accent focus-visible:bg-surface focus-visible:outline-none"
+        aria-label={text.characterCount(event.characters.length)}
+      >
+        {text.characterCount(event.characters.length)}
+      </button>
+
+      <div className="pointer-events-none invisible absolute left-0 top-full z-20 mt-2 w-56 rounded-[14px] border border-line bg-surface p-3 opacity-0 shadow-[0_18px_50px_rgba(91,71,36,0.18)] transition group-hover/characters:pointer-events-auto group-hover/characters:visible group-hover/characters:opacity-100 group-focus-within/characters:pointer-events-auto group-focus-within/characters:visible group-focus-within/characters:opacity-100">
+        <div className="space-y-2">
+          {event.characters.map((character) => {
+            return (
+              <div
+                key={character.id}
+                className="flex min-w-0 items-center gap-2 rounded-full border border-line bg-canvas/80 px-2 py-1 text-[0.7rem]"
+              >
+                <span
+                  className="h-2 w-2 shrink-0 rounded-full"
+                  style={{ backgroundColor: character.color }}
+                />
+                <Link
+                  href={`/projects/${projectId}/characters/${character.id}`}
+                  className="min-w-0 flex-1 truncate font-medium text-ink hover:text-accent"
+                >
+                  {character.name}
+                </Link>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function HistogramEventBlock({
   item,
   projectId,
-  onRemove,
-  busyKey,
   continuityResults,
   cardMinWidth,
   locale,
@@ -272,8 +313,6 @@ function HistogramEventBlock({
 }: {
   item: TimelineHistogramItem;
   projectId: string;
-  onRemove: (eventId: string, characterId: string) => void;
-  busyKey: string | null;
   continuityResults: ContinuityResult[];
   cardMinWidth: number;
   locale: string;
@@ -321,42 +360,8 @@ function HistogramEventBlock({
         </p>
       </div>
 
-      <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden pb-1 pr-1">
-        {event.characters.length === 0 ? (
-          <Badge>{text.noCharacters}</Badge>
-        ) : (
-          event.characters.map((character) => {
-            const removeKey = `${event.id}:${character.id}`;
-            const removing = busyKey === removeKey;
-
-            return (
-              <div
-                key={character.id}
-                className="inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border border-line bg-canvas/80 px-2 py-1 text-[0.7rem]"
-              >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{ backgroundColor: character.color }}
-                />
-                <Link
-                  href={`/projects/${projectId}/characters/${character.id}`}
-                  className="max-w-24 truncate font-medium text-ink hover:text-accent"
-                >
-                  {character.name}
-                </Link>
-                <button
-                  type="button"
-                  onClick={() => onRemove(event.id, character.id)}
-                  disabled={removing}
-                  className="rounded-full px-1 text-muted transition hover:text-accent disabled:opacity-50"
-                  aria-label={text.removeCharacterLabel(character.name, event.title)}
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })
-        )}
+      <div className="mt-3 flex flex-nowrap gap-1.5 overflow-visible pb-1 pr-1">
+        <CharacterRosterButton event={event} projectId={projectId} text={text} />
       </div>
     </article>
   );
@@ -368,7 +373,6 @@ export function TimelineBoard({
   events,
   continuityResults,
 }: TimelineBoardProps) {
-  const router = useRouter();
   const { language } = useLanguage();
   const text = copy[language];
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -378,10 +382,7 @@ export function TimelineBoard({
   const [characterFilter, setCharacterFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [chapterFilter, setChapterFilter] = useState("all");
-  const [busyKey, setBusyKey] = useState<string | null>(null);
-  const [timelineEvents, setTimelineEvents] = useState(events);
-  const [feedback, setFeedback] = useState<Feedback | null>(null);
-  const [, startTransition] = useTransition();
+  const timelineEvents = events;
 
   const chapterOptions = useMemo(() => {
     const chapters = new Set(
@@ -499,41 +500,6 @@ export function TimelineBoard({
     }
   }, [timelineScale]);
 
-  function handleRemove(eventId: string, characterId: string) {
-    const key = `${eventId}:${characterId}`;
-    const previousEvents = timelineEvents;
-
-    setBusyKey(key);
-    setFeedback({ tone: "info", message: text.removingCharacter });
-    setTimelineEvents((currentEvents) =>
-      currentEvents.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              characterIds: event.characterIds.filter((id) => id !== characterId),
-              characters: event.characters.filter((character) => character.id !== characterId),
-            }
-          : event,
-      ),
-    );
-
-    startTransition(async () => {
-      try {
-        await removeCharacterFromEventAction({ projectId, eventId, characterId });
-        setFeedback({ tone: "success", message: text.characterRemoved });
-        router.refresh();
-      } catch (error) {
-        setTimelineEvents(previousEvents);
-        setFeedback({
-          tone: "error",
-          message: getErrorMessage(error, text.removeFailed),
-        });
-      } finally {
-        setBusyKey(null);
-      }
-    });
-  }
-
   function handleTimelineScaleChange(nextScale: TimelineScale) {
     setTimelineScale(nextScale);
     window.localStorage.setItem(TIMELINE_SCALE_STORAGE_KEY, nextScale);
@@ -541,23 +507,6 @@ export function TimelineBoard({
 
   return (
     <div className="space-y-6">
-      {feedback ? (
-        <div
-          className={clsx(
-            "rounded-[18px] border px-4 py-3 text-sm",
-            feedback.tone === "error"
-              ? "border-red-200 bg-red-50 text-red-700"
-              : feedback.tone === "success"
-                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                : "border-line bg-canvas text-muted",
-          )}
-          role={feedback.tone === "error" ? "alert" : "status"}
-          aria-live="polite"
-        >
-          {feedback.message}
-        </div>
-      ) : null}
-
       <section className="rounded-[28px] border border-line bg-surface p-5">
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-56">
@@ -778,8 +727,6 @@ export function TimelineBoard({
                               key={`${track.kind}-${track.id}-${item.event.id}-${item.laneIndex}`}
                               item={item}
                               projectId={projectId}
-                              onRemove={handleRemove}
-                              busyKey={busyKey}
                               continuityResults={continuityResultsByEvent.get(item.event.id) ?? []}
                               cardMinWidth={trackCardMinWidth}
                               locale={language === "es" ? "es-MX" : "en-US"}
