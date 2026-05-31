@@ -15,8 +15,8 @@ const plexMono = IBM_Plex_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Continuity Tracker",
-  description: "Bootstrap shell for Continuity Tracker",
+  title: "Continuum",
+  description: "Continuum",
 };
 
 export default function RootLayout({

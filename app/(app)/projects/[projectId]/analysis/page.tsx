@@ -82,15 +82,24 @@ export default async function ProjectAnalysisPage({
         </div>
       </section>
 
-      <section className="space-y-4">
-        {filteredResults.map((result) => {
-          const character = result.characterId ? characterMap.get(result.characterId) : null;
+      <div className="overflow-hidden rounded-[28px] border border-line bg-surface">
+        <table className="w-full text-sm">
+          <thead className="border-b border-line">
+            <tr className="text-left text-xs uppercase tracking-[0.2em] text-muted">
+              <th className="px-5 py-4 font-normal">Severidad</th>
+              <th className="px-5 py-4 font-normal">Código</th>
+              <th className="px-5 py-4 font-normal">Explicación</th>
+              <th className="px-5 py-4 font-normal">Personaje</th>
+              <th className="px-5 py-4 font-normal">Eventos</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredResults.map((result, index) => {
+              const character = result.characterId ? characterMap.get(result.characterId) : null;
 
-          return (
-            <article key={`${result.code}-${result.eventIds.join("-")}`} className="rounded-[28px] border border-line bg-surface p-6">
-              <div className="flex flex-wrap items-start justify-between gap-4">
-                <div>
-                  <div className="flex flex-wrap items-center gap-2">
+              return (
+                <tr key={`${result.code}-${result.eventIds.join("-")}`} className={index !== filteredResults.length - 1 ? "border-b border-line/50" : undefined}>
+                  <td className="px-5 py-4">
                     <Badge
                       tone={
                         result.severity === "ERROR"
@@ -102,43 +111,40 @@ export default async function ProjectAnalysisPage({
                     >
                       {result.severity}
                     </Badge>
-                    <span className="font-mono text-xs uppercase tracking-[0.2em] text-muted">
-                      {result.code}
-                    </span>
-                  </div>
-                  <p className="mt-3 text-sm leading-6 text-ink">{result.explanation}</p>
-                </div>
-                {character ? (
-                  <Link href={`/projects/${projectId}/characters/${character.id}`}>
-                    <Button variant="secondary">{character.name}</Button>
-                  </Link>
-                ) : null}
-              </div>
+                  </td>
+                  <td className="px-5 py-4 font-mono text-xs uppercase tracking-[0.2em] text-muted">
+                    {result.code}
+                  </td>
+                  <td className="px-5 py-4 text-ink">{result.explanation}</td>
+                  <td className="px-5 py-4">
+                    {character ? (
+                      <Link href={`/projects/${projectId}/characters/${character.id}`}>
+                        <Button variant="secondary" className="text-xs">
+                          {character.name}
+                        </Button>
+                      </Link>
+                    ) : null}
+                  </td>
+                  <td className="px-5 py-4">
+                    <div className="flex flex-wrap gap-1">
+                      {result.eventIds.map((eventId) => {
+                        const event = eventMap.get(eventId);
+                        if (!event) return null;
 
-              <div className="mt-4 flex flex-wrap gap-2">
-                {result.eventIds.map((eventId) => {
-                  const event = eventMap.get(eventId);
-
-                  if (!event) {
-                    return null;
-                  }
-
-                  return (
-                    <Link key={eventId} href={`/projects/${projectId}/events`}>
-                      <Badge>{event.title}</Badge>
-                    </Link>
-                  );
-                })}
-              </div>
-
-              <div className="mt-4 rounded-[22px] border border-line bg-canvas/55 p-4">
-                <p className="font-medium">Sugerencia</p>
-                <p className="mt-2 text-sm leading-6 text-muted">{result.suggestedFix}</p>
-              </div>
-            </article>
-          );
-        })}
-      </section>
+                        return (
+                          <Link key={eventId} href={`/projects/${projectId}/events`}>
+                            <Badge>{event.title}</Badge>
+                          </Link>
+                        );
+                      })}
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }

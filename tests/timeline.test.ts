@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { buildCharacterTracking, buildTimelineEventCards } from "@/lib/continuity/timeline";
+import {
+  buildCharacterTracking,
+  buildTimelineAxisTicks,
+  buildTimelineEventCards,
+  buildTimelineHistogramTracks,
+  buildTimelineRange,
+  getTimelineWidth,
+  indexContinuityResultsByEvent,
+} from "@/lib/continuity/timeline";
 
 describe("timeline helpers", () => {
   const bruno = {
@@ -14,6 +22,13 @@ describe("timeline helpers", () => {
     maxSpeedKmh: 80,
     status: "UNKNOWN",
     statusDateInternal: null,
+  };
+
+  const elena = {
+    ...bruno,
+    id: "char-2",
+    name: "Elena",
+    color: "#28665D",
   };
 
   const eventA = {
@@ -100,6 +115,30 @@ describe("timeline helpers", () => {
     ],
   };
 
+  const eventC = {
+    ...eventA,
+    id: "event-c",
+    title: "Elena en Ciudad de Mexico",
+    internalStart: new Date("2026-01-01T14:03:30.000Z"),
+    internalEnd: new Date("2026-01-01T14:05:00.000Z"),
+    narrativeOrder: 3,
+    characters: [
+      {
+        eventId: "event-c",
+        characterId: "char-2",
+        character: elena,
+      },
+    ],
+  };
+
+  const eventD = {
+    ...eventA,
+    id: "event-d",
+    title: "Bruno dos dias despues",
+    internalStart: new Date("2026-01-03T14:03:00.000Z"),
+    internalEnd: new Date("2026-01-03T14:03:00.000Z"),
+  };
+
   it("builds timeline cards with ids for filters and drag/drop", () => {
     const [card] = buildTimelineEventCards([eventA]);
 
@@ -115,5 +154,199 @@ describe("timeline helpers", () => {
     expect(result.timeline[1]?.gapFromPreviousMinutes).toBe(1);
     expect(result.timeline[1]?.flags).toContain("Cambio de locacion");
     expect(result.conflicts.some((conflict) => conflict.id === "event-b-jump")).toBe(true);
+  });
+
+  it("builds a proportional timeline range from chronological event dates", () => {
+    const cards = buildTimelineEventCards([eventB, eventA, eventC]);
+    const range = buildTimelineRange(cards);
+
+    expect(range?.startMs).toBe(new Date("2026-01-01T14:03:00.000Z").getTime());
+    expect(range?.endMs).toBe(new Date("2026-01-01T14:05:00.000Z").getTime());
+  });
+
+  it("widens the canvas when the zoom level is finer", () => {
+    const cards = buildTimelineEventCards([eventA, eventD]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const hoursWidth = getTimelineWidth(range!, "hours");
+    const daysWidth = getTimelineWidth(range!, "days");
+    const weeksWidth = getTimelineWidth(range!, "weeks");
+
+    expect(hoursWidth).toBeGreaterThan(daysWidth);
+    expect(daysWidth).toBeGreaterThan(weeksWidth);
+  });
+
+  it("builds day ticks across whole-day intervals", () => {
+    const cards = buildTimelineEventCards([eventA, eventD]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const ticks = buildTimelineAxisTicks(range!, "days");
+
+    expect(ticks.map((tick) => tick.leftPercent)).toEqual([0, 50, 100]);
+    expect(ticks.every((tick) => !tick.label.startsWith("Semana del "))).toBe(true);
+  });
+
+  it("labels weekly ticks as week segments", () => {
+    const cards = buildTimelineEventCards([
+      eventA,
+      {
+        ...eventA,
+        id: "event-week",
+        title: "Bruno una semana despues",
+        internalStart: new Date("2026-01-10T14:03:00.000Z"),
+        internalEnd: new Date("2026-01-10T14:03:00.000Z"),
+      },
+    ]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const ticks = buildTimelineAxisTicks(range!, "weeks");
+
+    expect(ticks.length).toBeGreaterThan(1);
+    expect(ticks.every((tick) => tick.label.startsWith("Semana del "))).toBe(true);
+  });
+
+  it("stacks overlapping events for the same character track", () => {
+    const longEvent = {
+      ...eventA,
+      internalEnd: new Date("2026-01-01T14:04:00.000Z"),
+    };
+    const overlappingEvent = {
+      ...eventA,
+      id: "event-overlap",
+      title: "Bruno traslapado",
+      internalStart: new Date("2026-01-01T14:03:30.000Z"),
+      internalEnd: new Date("2026-01-01T14:05:00.000Z"),
+    };
+    const cards = buildTimelineEventCards([longEvent, overlappingEvent]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const [track] = buildTimelineHistogramTracks({
+      mode: "character",
+      characters: [bruno],
+      events: cards,
+      range: range!,
+    });
+
+    expect(track?.events.map((event) => event.laneIndex)).toEqual([0, 1]);
+    expect(track?.laneCount).toBe(2);
+  });
+
+  it("allows simultaneous events on different character tracks", () => {
+    const cards = buildTimelineEventCards([eventA, eventC]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const tracks = buildTimelineHistogramTracks({
+      mode: "character",
+      characters: [bruno, elena],
+      events: cards,
+      range: range!,
+    });
+
+    expect(tracks).toHaveLength(2);
+    expect(tracks[0]?.events[0]?.laneIndex).toBe(0);
+    expect(tracks[1]?.events[0]?.laneIndex).toBe(0);
+  });
+
+  it("builds location tracks from event start and end locations", () => {
+    const cards = buildTimelineEventCards([eventA, eventB]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const tracks = buildTimelineHistogramTracks({
+      mode: "location",
+      characters: [bruno],
+      events: cards,
+      range: range!,
+    });
+
+    expect(tracks.map((track) => track.label)).toEqual(["Ciudad de Mexico", "Tokio"]);
+    expect(tracks.every((track) => track.kind === "location")).toBe(true);
+  });
+
+  it("stacks simultaneous point-in-time events in the same location track", () => {
+    const simultaneousEvent = {
+      ...eventA,
+      id: "event-same-location",
+      title: "Otra escena en Ciudad de Mexico",
+      narrativeOrder: 4,
+      characters: [
+        {
+          eventId: "event-same-location",
+          characterId: "char-2",
+          character: elena,
+        },
+      ],
+    };
+    const cards = buildTimelineEventCards([eventA, simultaneousEvent]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const [track] = buildTimelineHistogramTracks({
+      mode: "location",
+      characters: [bruno, elena],
+      events: cards,
+      range: range!,
+    });
+
+    expect(track?.label).toBe("Ciudad de Mexico");
+    expect(track?.events.map((item) => item.event.id)).toEqual([
+      "event-a",
+      "event-same-location",
+    ]);
+    expect(track?.events.map((item) => item.laneIndex)).toEqual([0, 1]);
+    expect(track?.laneCount).toBe(2);
+  });
+
+  it("adds an event with different start and end locations to both location tracks once", () => {
+    const travelEvent = {
+      ...eventA,
+      id: "event-travel",
+      title: "Viaje CDMX Tokio",
+      endLocation: eventB.endLocation,
+      endLocationId: eventB.endLocationId,
+    };
+    const cards = buildTimelineEventCards([travelEvent]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const tracks = buildTimelineHistogramTracks({
+      mode: "location",
+      characters: [bruno],
+      events: cards,
+      range: range!,
+    });
+
+    expect(tracks).toHaveLength(2);
+    expect(tracks[0]?.events.map((item) => item.event.id)).toEqual(["event-travel"]);
+    expect(tracks[1]?.events.map((item) => item.event.id)).toEqual(["event-travel"]);
+  });
+
+  it("indexes continuity results by every affected event", () => {
+    const result = {
+      severity: "ERROR" as const,
+      code: "CHARACTER_OVERLAPPING_EVENTS",
+      characterId: "char-1",
+      eventIds: ["event-a", "event-b"],
+      explanation: "Bruno aparece en eventos traslapados.",
+      suggestedFix: "Ajusta ventanas temporales.",
+    };
+
+    const indexed = indexContinuityResultsByEvent([result]);
+
+    expect(indexed.get("event-a")).toEqual([result]);
+    expect(indexed.get("event-b")).toEqual([result]);
   });
 });

@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import type { AuthActionState } from "@/app/(auth)/actions";
+import { BrandLogo } from "@/components/BrandLogo";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type AuthFormProps = {
@@ -41,9 +42,7 @@ export function AuthForm({
 
   return (
     <div className="w-full max-w-md rounded-[32px] border border-line bg-surface/95 p-8 shadow-[0_22px_70px_rgba(91,71,36,0.12)]">
-      <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-        Continuity
-      </p>
+      <BrandLogo variant="compact" />
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">{title}</h1>
       <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
 

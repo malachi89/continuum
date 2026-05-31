@@ -93,21 +93,6 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
       });
     }
 
-    for (const location of [startLocation, endLocation]) {
-      if (
-        location &&
-        (location.latitude === null || location.longitude === null)
-      ) {
-        results.push({
-          severity: "WARNING",
-          code: "LOCATION_MISSING_COORDINATES",
-          eventIds: [event.id],
-          explanation: `La locacion "${location.name}" usada en "${event.title}" no tiene coordenadas completas.`,
-          suggestedFix: "Completa latitud y longitud para habilitar chequeos de distancia y viaje.",
-        });
-      }
-    }
-
     for (const characterId of event.characterIds) {
       const currentEvents = eventsByCharacter.get(characterId) ?? [];
       currentEvents.push(event);

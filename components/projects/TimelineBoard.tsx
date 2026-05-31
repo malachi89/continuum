@@ -1,31 +1,26 @@
 "use client";
 
-import {
-  closestCenter,
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  pointerWithin,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type CollisionDetection,
-  type DragEndEvent,
-} from "@dnd-kit/core";
 import clsx from "clsx";
+import { AlertTriangle, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import {
-  assignLocationToEventAction,
-  assignCharacterToEventAction,
-  removeCharacterFromEventAction,
-} from "@/app/(app)/projects/actions";
+import { removeCharacterFromEventAction } from "@/app/(app)/projects/actions";
 import type {
+  TimelineBoardMode,
+  TimelineScale,
   TimelineCharacterOption,
   TimelineEventCard,
+  TimelineHistogramItem,
 } from "@/lib/continuity/timeline";
+import {
+  buildTimelineAxisTicks,
+  buildTimelineHistogramTracks,
+  buildTimelineRange,
+  indexContinuityResultsByEvent,
+  getTimelineWidth,
+} from "@/lib/continuity/timeline";
+import type { ContinuityResult } from "@/lib/continuity/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
@@ -34,84 +29,35 @@ type TimelineBoardProps = {
   projectId: string;
   characters: TimelineCharacterOption[];
   events: TimelineEventCard[];
-  availableLocations: Array<{ id: string; name: string }>;
+  continuityResults: ContinuityResult[];
 };
 
 type SortMode = "chronological" | "narrative";
-type LocationSide = "start" | "end";
 type Feedback = {
   tone: "info" | "error" | "success";
   message: string;
 };
 
-const timelineCollisionDetection: CollisionDetection = (args) => {
-  const pointerCollisions = pointerWithin(args);
+const TRACK_LABEL_WIDTH = 220;
+const TRACK_CARD_HEIGHT = 152;
+const TRACK_LANE_GAP = 12;
+const TRACK_VERTICAL_PADDING = 12;
+const TIMELINE_SCALE_STORAGE_KEY = "continuum.timelineScale";
+const TIMELINE_END_GAP = 64;
 
-  if (pointerCollisions.length > 0) {
-    const activeLocationId = args.active.data.current?.locationId;
+const viewOptions: Array<{ value: TimelineBoardMode; label: string }> = [
+  { value: "character", label: "Personajes" },
+  { value: "location", label: "Lugares" },
+];
 
-    if (typeof activeLocationId === "string") {
-      const locationTarget = pointerCollisions.find((collision) => {
-        const container = args.droppableContainers.find(
-          (droppable) => droppable.id === collision.id,
-        );
-        return typeof container?.data.current?.locationSide === "string";
-      });
-
-      return locationTarget ? [locationTarget] : pointerCollisions;
-    }
-
-    return pointerCollisions;
-  }
-
-  return closestCenter(args);
-};
+const zoomOptions: Array<{ value: TimelineScale; label: string }> = [
+  { value: "hours", label: "Horas" },
+  { value: "days", label: "Días" },
+  { value: "weeks", label: "Semanas" },
+];
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
-}
-
-function getDroppedEventId(event: DragEndEvent) {
-  const dataEventId = event.over?.data.current?.eventId;
-
-  if (typeof dataEventId === "string" && dataEventId.length > 0) {
-    return dataEventId;
-  }
-
-  const overId = event.over?.id;
-
-  if (typeof overId === "string" && overId.startsWith("event:")) {
-    return overId.slice("event:".length);
-  }
-
-  return undefined;
-}
-
-function getDroppedLocationTarget(event: DragEndEvent) {
-  const eventId = event.over?.data.current?.eventId;
-  const locationSide = event.over?.data.current?.locationSide;
-
-  if (
-    typeof eventId === "string" &&
-    eventId.length > 0 &&
-    (locationSide === "start" || locationSide === "end")
-  ) {
-    return { eventId, locationSide };
-  }
-
-  return undefined;
-}
-
-function getFallbackLocationSide(targetEvent: TimelineEventCard): LocationSide {
-  if (!targetEvent.startLocation) {
-    return "start";
-  }
-
-  if (!targetEvent.endLocation) {
-    return "end";
-  }
-
-  return "end";
 }
 
 function formatEventDate(value: string) {
@@ -121,193 +67,166 @@ function formatEventDate(value: string) {
   }).format(new Date(value));
 }
 
-function DraggableLocationCard({
-  location,
-  active,
-}: {
-  location: { id: string; name: string };
-  active?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `location:${location.id}`,
-    data: {
-      locationId: location.id,
-    },
-  });
+function getTrackLaneTop(laneIndex: number) {
+  return TRACK_VERTICAL_PADDING + laneIndex * (TRACK_CARD_HEIGHT + TRACK_LANE_GAP);
+}
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
+function getTrackHeight(laneCount: number) {
   return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={clsx(
-        "flex w-full cursor-grab touch-none select-none items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition active:cursor-grabbing",
-        active || isDragging
-          ? "border-accent bg-accent/10"
-          : "border-line bg-surface hover:border-accent hover:bg-canvas/70",
-        isDragging && "opacity-0",
-      )}
-    >
-      <span className="flex h-7 w-7 items-center justify-center rounded-full border border-line bg-canvas text-xs font-semibold text-muted">
-        LO
-      </span>
-      <span className="block min-w-0 flex-1 truncate text-sm font-semibold text-ink">
-        {location.name}
-      </span>
-    </button>
+    TRACK_VERTICAL_PADDING * 2 +
+    laneCount * TRACK_CARD_HEIGHT +
+    Math.max(0, laneCount - 1) * TRACK_LANE_GAP
   );
 }
 
-function DraggableCharacterCard({
-  character,
-  active,
-}: {
-  character: TimelineCharacterOption;
-  active?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `character:${character.id}`,
-    data: {
-      characterId: character.id,
-    },
-  });
+function getLocationLabel(event: TimelineEventCard) {
+  if (
+    event.startLocation &&
+    event.endLocation &&
+    event.startLocation.id !== event.endLocation.id
+  ) {
+    return `${event.startLocation.name} -> ${event.endLocation.name}`;
+  }
 
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
+  return event.startLocation?.name ?? event.endLocation?.name ?? "Sin locacion";
+}
 
-  return (
-    <button
-      ref={setNodeRef}
-      type="button"
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={clsx(
-        "flex w-full cursor-grab touch-none select-none items-center gap-3 rounded-[20px] border px-3 py-3 text-left transition active:cursor-grabbing",
-        active || isDragging
-          ? "border-accent bg-accent/10"
-          : "border-line bg-surface hover:border-accent hover:bg-canvas/70",
-        isDragging && "opacity-0",
-      )}
-    >
-      <span
-        className="h-3.5 w-3.5 rounded-full border border-black/10"
-        style={{ backgroundColor: character.color }}
-      />
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold text-ink">
-          {character.name}
-        </span>
-        <span className="block truncate text-xs text-muted">
-          {character.alias ?? character.status}
-        </span>
-      </span>
-    </button>
+function getContinuityTone(results: ContinuityResult[]) {
+  if (results.some((result) => result.severity === "ERROR")) {
+    return "error";
+  }
+
+  if (results.some((result) => result.severity === "WARNING")) {
+    return "warning";
+  }
+
+  return "note";
+}
+
+function getContinuityLabel(results: ContinuityResult[]) {
+  return results
+    .map((result) => `${result.severity}: ${result.explanation}`)
+    .join("\n");
+}
+
+function getViewHeader(mode: TimelineBoardMode) {
+  if (mode === "location") {
+    return "Lugar";
+  }
+
+  return "Personaje";
+}
+
+function getEventLocations(event: TimelineEventCard) {
+  return [event.startLocation, event.endLocation].filter(
+    (location): location is { id: string; name: string } => location !== null,
   );
 }
 
-function LocationDropTarget({
-  event,
-  side,
-}: {
-  event: TimelineEventCard;
-  side: LocationSide;
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `event:${event.id}:location:${side}`,
-    data: {
-      eventId: event.id,
-      locationSide: side,
-    },
-  });
-  const location = side === "start" ? event.startLocation : event.endLocation;
+function getInitialTimelineScale(): TimelineScale {
+  if (typeof window === "undefined") {
+    return "hours";
+  }
+
+  const storedScale = window.localStorage.getItem(TIMELINE_SCALE_STORAGE_KEY);
+
+  if (storedScale === "hours" || storedScale === "days" || storedScale === "weeks") {
+    return storedScale;
+  }
+
+  return "hours";
+}
+
+function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
+  if (results.length === 0) {
+    return null;
+  }
+
+  const tone = getContinuityTone(results);
+  const label = getContinuityLabel(results);
+  const Icon = tone === "error" ? AlertTriangle : CircleAlert;
 
   return (
     <div
-      ref={setNodeRef}
+      tabIndex={0}
+      title={label}
+      aria-label={label}
       className={clsx(
-        "min-w-40 flex-1 rounded-[18px] border px-3 py-2 transition",
-        isOver ? "border-accent bg-accent/10" : "border-line bg-canvas/70",
+        "group absolute right-2 top-2 z-10 rounded-full border p-1 outline-none transition",
+        tone === "error"
+          ? "border-red-200 bg-red-50 text-red-700"
+          : tone === "warning"
+            ? "border-amber-200 bg-amber-50 text-amber-700"
+            : "border-line bg-canvas text-muted",
       )}
     >
-      <p className="text-[0.65rem] font-medium uppercase tracking-[0.2em] text-muted">
-        {side === "start" ? "Inicio" : "Fin"}
-      </p>
-      <p className="mt-1 truncate text-sm font-semibold text-ink">
-        {location?.name ?? "Sin locacion"}
-      </p>
+      <Icon className="h-4 w-4" aria-hidden="true" />
+      <div className="pointer-events-none absolute right-0 top-7 hidden w-72 rounded-[14px] border border-line bg-surface p-3 text-left text-xs leading-5 text-ink shadow-[0_18px_50px_rgba(91,71,36,0.18)] group-hover:block group-focus:block">
+        {results.slice(0, 3).map((result, index) => (
+          <p
+            key={`${result.code}-${result.eventIds.join("-")}`}
+            className={index > 0 ? "mt-2" : undefined}
+          >
+            <span className="font-semibold">{result.severity}</span> {result.explanation}
+          </p>
+        ))}
+      </div>
     </div>
   );
 }
 
-function TimelineDropZone({
-  event,
+function HistogramEventBlock({
+  item,
   projectId,
   onRemove,
   busyKey,
+  continuityResults,
 }: {
-  event: TimelineEventCard;
+  item: TimelineHistogramItem;
   projectId: string;
   onRemove: (eventId: string, characterId: string) => void;
   busyKey: string | null;
+  continuityResults: ContinuityResult[];
 }) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `event:${event.id}`,
-    data: {
-      eventId: event.id,
-    },
-  });
+  const event = item.event;
 
   return (
     <article
-      ref={setNodeRef}
-      className={clsx(
-        "rounded-[24px] border p-5 transition",
-        isOver
-          ? "border-accent bg-accent/10 shadow-[0_0_0_1px_rgba(182,84,43,0.12)]"
-          : "border-line bg-surface",
-      )}
+      style={{
+        left: `${item.offsetPercent}%`,
+        top: `${getTrackLaneTop(item.laneIndex)}px`,
+        width: `${item.widthPercent}%`,
+        height: `${TRACK_CARD_HEIGHT}px`,
+        minWidth: "13rem",
+      }}
+      className="absolute overflow-visible rounded-[18px] border border-line bg-surface p-3 pr-9 text-left shadow-sm"
     >
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="text-lg font-semibold">{event.title}</h3>
-            <Badge tone="accent">{event.eventType}</Badge>
-            {event.narrativeOrder !== null ? (
-              <Badge tone="success">Orden {event.narrativeOrder}</Badge>
-            ) : null}
-          </div>
-          <p className="mt-2 text-sm text-muted">
-            {formatEventDate(event.internalStartIso)} {"->"}{" "}
-            {formatEventDate(event.internalEndIso)}
-          </p>
-        </div>
+      <ContinuityMarker results={continuityResults} />
 
-        <div className="flex flex-wrap justify-end gap-2">
+      <div className="min-w-0">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge tone="accent">{event.eventType}</Badge>
           {event.chapterOrEpisode ? <Badge>{event.chapterOrEpisode}</Badge> : null}
-          <LocationDropTarget event={event} side="start" />
-          <LocationDropTarget event={event} side="end" />
+          {event.narrativeOrder !== null ? (
+            <Badge tone="success">#{event.narrativeOrder}</Badge>
+          ) : null}
         </div>
+        <Link
+          href={`/projects/${projectId}/events/${event.id}`}
+          className="mt-2 block truncate text-sm font-semibold text-ink hover:text-accent"
+        >
+          {event.title}
+        </Link>
+        <p className="mt-1 truncate text-xs text-muted">{getLocationLabel(event)}</p>
+        <p className="mt-1 truncate text-[0.7rem] text-muted">
+          {formatEventDate(event.internalStartIso)} {"->"}{" "}
+          {formatEventDate(event.internalEndIso)}
+        </p>
       </div>
 
-      {event.description ? (
-        <p className="mt-3 text-sm leading-6 text-muted">{event.description}</p>
-      ) : null}
-
-      <div className="mt-4 flex flex-wrap gap-2">
+      <div className="mt-3 flex flex-wrap gap-1.5">
         {event.characters.length === 0 ? (
-          <Badge>Arrastra personajes aqui</Badge>
+          <Badge>Sin personajes</Badge>
         ) : (
           event.characters.map((character) => {
             const removeKey = `${event.id}:${character.id}`;
@@ -316,15 +235,15 @@ function TimelineDropZone({
             return (
               <div
                 key={character.id}
-                className="inline-flex items-center gap-2 rounded-full border border-line bg-canvas/80 px-3 py-1.5 text-xs"
+                className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-line bg-canvas/80 px-2 py-1 text-[0.7rem]"
               >
                 <span
-                  className="h-2.5 w-2.5 rounded-full"
+                  className="h-2 w-2 shrink-0 rounded-full"
                   style={{ backgroundColor: character.color }}
                 />
                 <Link
                   href={`/projects/${projectId}/characters/${character.id}`}
-                  className="font-medium text-ink hover:text-accent"
+                  className="max-w-24 truncate font-medium text-ink hover:text-accent"
                 >
                   {character.name}
                 </Link>
@@ -350,16 +269,15 @@ export function TimelineBoard({
   projectId,
   characters,
   events,
-  availableLocations,
+  continuityResults,
 }: TimelineBoardProps) {
   const router = useRouter();
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
+  const [boardMode, setBoardMode] = useState<TimelineBoardMode>("character");
+  const [timelineScale, setTimelineScale] = useState<TimelineScale>(getInitialTimelineScale);
   const [sortMode, setSortMode] = useState<SortMode>("chronological");
   const [characterFilter, setCharacterFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [chapterFilter, setChapterFilter] = useState("all");
-  const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
-  const [activeLocationId, setActiveLocationId] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
   const [timelineEvents, setTimelineEvents] = useState(events);
   const [feedback, setFeedback] = useState<Feedback | null>(null);
@@ -374,18 +292,29 @@ export function TimelineBoard({
     return [...chapters].sort((a, b) => a.localeCompare(b));
   }, [timelineEvents]);
 
+  const locationOptions = useMemo(() => {
+    const locations = new Map<string, { id: string; name: string }>();
+
+    for (const event of timelineEvents) {
+      for (const location of getEventLocations(event)) {
+        locations.set(location.id, location);
+      }
+    }
+
+    return [...locations.values()].sort((a, b) => a.name.localeCompare(b.name));
+  }, [timelineEvents]);
+
   const filteredEvents = useMemo(() => {
     const filtered = timelineEvents.filter((event) => {
       if (characterFilter !== "all" && !event.characterIds.includes(characterFilter)) {
         return false;
       }
 
-      if (locationFilter !== "all") {
-        const matchStart = event.startLocation?.id === locationFilter;
-        const matchEnd = event.endLocation?.id === locationFilter;
-        if (!matchStart && !matchEnd) {
-          return false;
-        }
+      if (
+        locationFilter !== "all" &&
+        !getEventLocations(event).some((location) => location.id === locationFilter)
+      ) {
+        return false;
       }
 
       if (chapterFilter !== "all" && event.chapterOrEpisode !== chapterFilter) {
@@ -412,126 +341,36 @@ export function TimelineBoard({
     });
   }, [chapterFilter, characterFilter, locationFilter, sortMode, timelineEvents]);
 
-  const activeCharacter =
-    activeCharacterId === null
-      ? null
-      : characters.find((character) => character.id === activeCharacterId) ?? null;
+  const filteredCharacters = useMemo(
+    () =>
+      characterFilter === "all"
+        ? characters
+        : characters.filter((character) => character.id === characterFilter),
+    [characterFilter, characters],
+  );
 
-  const activeLocation =
-    activeLocationId === null
-      ? null
-      : availableLocations.find((location) => location.id === activeLocationId) ?? null;
-
-  function handleAssign(characterId: string, eventId: string) {
-    const key = `${eventId}:${characterId}`;
-    const targetEvent = timelineEvents.find((event) => event.id === eventId);
-    const character = characters.find((currentCharacter) => currentCharacter.id === characterId);
-
-    if (!targetEvent || !character) {
-      setFeedback({
-        tone: "error",
-        message: "No pudimos identificar el evento o personaje seleccionado.",
-      });
-      return;
+  const timelineRange = useMemo(() => buildTimelineRange(filteredEvents), [filteredEvents]);
+  const continuityResultsByEvent = useMemo(
+    () => indexContinuityResultsByEvent(continuityResults),
+    [continuityResults],
+  );
+  const timelineWidth = timelineRange ? getTimelineWidth(timelineRange, timelineScale) : 0;
+  const timelineCanvasWidth = timelineWidth + TIMELINE_END_GAP;
+  const axisTicks = timelineRange ? buildTimelineAxisTicks(timelineRange, timelineScale) : [];
+  const activeZoomLabel =
+    zoomOptions.find((option) => option.value === timelineScale)?.label ?? "Horas";
+  const histogramTracks = useMemo(() => {
+    if (!timelineRange) {
+      return [];
     }
 
-    if (targetEvent.characterIds.includes(characterId)) {
-      return;
-    }
-
-    const previousEvents = timelineEvents;
-
-    setBusyKey(key);
-    setFeedback({ tone: "info", message: "Asignando personaje al evento..." });
-    setTimelineEvents((currentEvents) =>
-      currentEvents.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              characterIds: [...event.characterIds, characterId],
-              characters: [
-                ...event.characters,
-                {
-                  id: character.id,
-                  name: character.name,
-                  alias: character.alias,
-                  color: character.color,
-                },
-              ],
-            }
-          : event,
-      ),
-    );
-
-    startTransition(async () => {
-      try {
-        await assignCharacterToEventAction({ projectId, eventId, characterId });
-        setFeedback({ tone: "success", message: "Personaje asignado al evento." });
-        router.refresh();
-      } catch (error) {
-        setTimelineEvents(previousEvents);
-        setFeedback({
-          tone: "error",
-          message: getErrorMessage(error, "No pudimos asignar el personaje al evento."),
-        });
-      } finally {
-        setBusyKey(null);
-      }
-    });
-  }
-
-  function handleAssignLocation(locationId: string, eventId: string, locationSide: LocationSide) {
-    const key = `location:${eventId}:${locationSide}`;
-    const targetEvent = timelineEvents.find((event) => event.id === eventId);
-    const location = availableLocations.find((currentLocation) => currentLocation.id === locationId);
-
-    if (!targetEvent || !location) {
-      setFeedback({
-        tone: "error",
-        message: "No pudimos identificar el evento o la locacion seleccionada.",
-      });
-      return;
-    }
-
-    const previousEvents = timelineEvents;
-    const locationValue = { id: location.id, name: location.name };
-
-    setBusyKey(key);
-    setFeedback({ tone: "info", message: "Asignando locacion al evento..." });
-    setTimelineEvents((currentEvents) =>
-      currentEvents.map((event) =>
-        event.id === eventId
-          ? {
-              ...event,
-              startLocation:
-                locationSide === "start" ? locationValue : event.startLocation,
-              endLocation: locationSide === "end" ? locationValue : event.endLocation,
-            }
-          : event,
-      ),
-    );
-
-    startTransition(async () => {
-      try {
-        await assignLocationToEventAction({
-          projectId,
-          eventId,
-          locationId,
-          side: locationSide,
-        });
-        setFeedback({ tone: "success", message: "Locacion asignada al evento." });
-        router.refresh();
-      } catch (error) {
-        setTimelineEvents(previousEvents);
-        setFeedback({
-          tone: "error",
-          message: getErrorMessage(error, "No pudimos asignar la locacion al evento."),
-        });
-      } finally {
-        setBusyKey(null);
-      }
-    });
-  }
+    return buildTimelineHistogramTracks({
+      mode: boardMode,
+      characters: filteredCharacters,
+      events: filteredEvents,
+      range: timelineRange,
+    }).filter((track) => track.events.length > 0 || characterFilter !== "all");
+  }, [boardMode, characterFilter, filteredCharacters, filteredEvents, timelineRange]);
 
   function handleRemove(eventId: string, characterId: string) {
     const key = `${eventId}:${characterId}`;
@@ -568,247 +407,251 @@ export function TimelineBoard({
     });
   }
 
-  function handleDragEnd(event: DragEndEvent) {
-    setActiveCharacterId(null);
-    setActiveLocationId(null);
-
-    const characterId = event.active.data.current?.characterId as string | undefined;
-    const locationId = event.active.data.current?.locationId as string | undefined;
-    const eventId = getDroppedEventId(event);
-
-    if (locationId) {
-      const locationTarget = getDroppedLocationTarget(event);
-
-      if (locationTarget) {
-        handleAssignLocation(locationId, locationTarget.eventId, locationTarget.locationSide);
-        return;
-      }
-
-      if (eventId) {
-        const targetEvent = timelineEvents.find((currentEvent) => currentEvent.id === eventId);
-
-        if (targetEvent) {
-          handleAssignLocation(locationId, eventId, getFallbackLocationSide(targetEvent));
-        }
-      }
-
-      return;
-    }
-
-    if (!characterId || !eventId) {
-      return;
-    }
-
-    handleAssign(characterId, eventId);
+  function handleTimelineScaleChange(nextScale: TimelineScale) {
+    setTimelineScale(nextScale);
+    window.localStorage.setItem(TIMELINE_SCALE_STORAGE_KEY, nextScale);
   }
 
   return (
-    <DndContext
-      collisionDetection={timelineCollisionDetection}
-      sensors={sensors}
-      onDragStart={(event) => {
-        const characterId = event.active.data.current?.characterId as string | undefined;
-        const locationId = event.active.data.current?.locationId as string | undefined;
-        setActiveCharacterId(characterId ?? null);
-        setActiveLocationId(locationId ?? null);
-      }}
-      onDragCancel={() => {
-        setActiveCharacterId(null);
-        setActiveLocationId(null);
-      }}
-      onDragEnd={handleDragEnd}
-    >
-      <div className="space-y-6">
-        {feedback ? (
-          <div
-            className={clsx(
-              "rounded-[18px] border px-4 py-3 text-sm",
-              feedback.tone === "error"
-                ? "border-red-200 bg-red-50 text-red-700"
-                : feedback.tone === "success"
-                  ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                  : "border-line bg-canvas text-muted",
-            )}
-            role={feedback.tone === "error" ? "alert" : "status"}
-            aria-live="polite"
-          >
-            {feedback.message}
-          </div>
-        ) : null}
-
-        <section className="rounded-[28px] border border-line bg-surface p-5">
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="min-w-44 flex-1">
-              <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                Orden
-              </p>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant={sortMode === "chronological" ? "primary" : "secondary"}
-                  onClick={() => setSortMode("chronological")}
-                >
-                  Cronológico
-                </Button>
-                <Button
-                  type="button"
-                  variant={sortMode === "narrative" ? "primary" : "secondary"}
-                  onClick={() => setSortMode("narrative")}
-                >
-                  Narrativo
-                </Button>
-              </div>
-            </div>
-
-            <label className="min-w-40">
-              <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                Personaje
-              </span>
-              <Select value={characterFilter} onChange={(event) => setCharacterFilter(event.target.value)}>
-                <option value="all">Todos</option>
-                {characters.map((character) => (
-                  <option key={character.id} value={character.id}>
-                    {character.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-
-            <label className="min-w-40">
-              <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                Locacion
-              </span>
-              <Select value={locationFilter} onChange={(event) => setLocationFilter(event.target.value)}>
-                <option value="all">Todas</option>
-                {availableLocations.map((location) => (
-                  <option key={location.id} value={location.id}>
-                    {location.name}
-                  </option>
-                ))}
-              </Select>
-            </label>
-
-            <label className="min-w-40">
-              <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-                Capitulo
-              </span>
-              <Select value={chapterFilter} onChange={(event) => setChapterFilter(event.target.value)}>
-                <option value="all">Todos</option>
-                {chapterOptions.map((chapter) => (
-                  <option key={chapter} value={chapter}>
-                    {chapter}
-                  </option>
-                ))}
-              </Select>
-            </label>
-          </div>
-        </section>
-
-        <div className="grid gap-6 xl:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="space-y-4">
-            <div className="rounded-[28px] border border-line bg-surface p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                    Paleta
-                  </p>
-                  <h3 className="mt-2 text-lg font-semibold">Personajes</h3>
-                </div>
-                <Badge>{characters.length}</Badge>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {characters.map((character) => (
-                  <DraggableCharacterCard
-                    key={character.id}
-                    character={character}
-                    active={activeCharacterId === character.id}
-                  />
-                ))}
-              </div>
-            </div>
-
-            <div className="rounded-[28px] border border-line bg-surface p-5">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                    Locaciones
-                  </p>
-                  <h3 className="mt-2 text-lg font-semibold">Arrastrables</h3>
-                </div>
-                <Badge>{availableLocations.length}</Badge>
-              </div>
-
-              <div className="mt-5 space-y-3">
-                {availableLocations.length === 0 ? (
-                  <p className="rounded-[20px] border border-dashed border-line bg-canvas/60 p-4 text-sm text-muted">
-                    Sin locaciones en este proyecto.
-                  </p>
-                ) : (
-                  availableLocations.map((location) => (
-                    <DraggableLocationCard
-                      key={location.id}
-                      location={location}
-                      active={activeLocationId === location.id}
-                    />
-                  ))
-                )}
-              </div>
-            </div>
-          </aside>
-
-          <section className="space-y-4">
-            {filteredEvents.length === 0 ? (
-              <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
-                Ningún evento coincide con los filtros actuales.
-              </div>
-            ) : (
-              filteredEvents.map((event) => (
-                <TimelineDropZone
-                  key={event.id}
-                  event={event}
-                  projectId={projectId}
-                  onRemove={handleRemove}
-                  busyKey={busyKey}
-                />
-              ))
-            )}
-          </section>
+    <div className="space-y-6">
+      {feedback ? (
+        <div
+          className={clsx(
+            "rounded-[18px] border px-4 py-3 text-sm",
+            feedback.tone === "error"
+              ? "border-red-200 bg-red-50 text-red-700"
+              : feedback.tone === "success"
+                ? "border-emerald-200 bg-emerald-50 text-emerald-700"
+                : "border-line bg-canvas text-muted",
+          )}
+          role={feedback.tone === "error" ? "alert" : "status"}
+          aria-live="polite"
+        >
+          {feedback.message}
         </div>
-      </div>
+      ) : null}
 
-      <DragOverlay>
-        {activeCharacter ? (
-          <div className="w-64 rounded-[20px] border border-accent bg-surface p-3 shadow-[0_18px_50px_rgba(91,71,36,0.18)]">
-            <div className="flex items-center gap-3">
-              <span
-                className="h-3.5 w-3.5 rounded-full border border-black/10"
-                style={{ backgroundColor: activeCharacter.color }}
-              />
-              <div>
-                <p className="text-sm font-semibold text-ink">{activeCharacter.name}</p>
-                <p className="text-xs text-muted">
-                  Suelta sobre un evento para asignarlo
-                </p>
+      <section className="rounded-[28px] border border-line bg-surface p-5">
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="min-w-56">
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Vista
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {viewOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={boardMode === option.value ? "primary" : "secondary"}
+                  onClick={() => setBoardMode(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <div className="min-w-44">
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Orden
+            </p>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant={sortMode === "chronological" ? "primary" : "secondary"}
+                onClick={() => setSortMode("chronological")}
+              >
+                Cronológico
+              </Button>
+              <Button
+                type="button"
+                variant={sortMode === "narrative" ? "primary" : "secondary"}
+                onClick={() => setSortMode("narrative")}
+              >
+                Narrativo
+              </Button>
+            </div>
+          </div>
+
+          <div className="min-w-44">
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Zoom
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {zoomOptions.map((option) => (
+                <Button
+                  key={option.value}
+                  type="button"
+                  variant={timelineScale === option.value ? "primary" : "secondary"}
+                  onClick={() => handleTimelineScaleChange(option.value)}
+                >
+                  {option.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
+          <label className="min-w-40">
+            <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Personaje
+            </span>
+            <Select
+              value={characterFilter}
+              onChange={(event) => setCharacterFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              {characters.map((character) => (
+                <option key={character.id} value={character.id}>
+                  {character.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          <label className="min-w-40">
+            <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Lugar
+            </span>
+            <Select
+              value={locationFilter}
+              onChange={(event) => setLocationFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              {locationOptions.map((location) => (
+                <option key={location.id} value={location.id}>
+                  {location.name}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          <label className="min-w-40">
+            <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              Capitulo
+            </span>
+            <Select
+              value={chapterFilter}
+              onChange={(event) => setChapterFilter(event.target.value)}
+            >
+              <option value="all">Todos</option>
+              {chapterOptions.map((chapter) => (
+                <option key={chapter} value={chapter}>
+                  {chapter}
+                </option>
+              ))}
+            </Select>
+          </label>
+
+          <div className="ml-auto flex flex-wrap gap-2">
+            <Badge tone="accent">{filteredEvents.length} eventos</Badge>
+            <Badge>{histogramTracks.length} filas</Badge>
+            <Badge tone="success">{locationOptions.length} lugares</Badge>
+            <Badge>Zoom: {activeZoomLabel}</Badge>
+          </div>
+        </div>
+      </section>
+
+      <section className="min-w-0">
+        {filteredEvents.length === 0 || !timelineRange ? (
+          <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
+            Ningún evento coincide con los filtros actuales.
+          </div>
+        ) : histogramTracks.length === 0 ? (
+          <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
+            No hay filas con eventos para los filtros actuales.
+          </div>
+        ) : (
+          <div className="overflow-auto rounded-[28px] border border-line bg-surface">
+            <div style={{ minWidth: TRACK_LABEL_WIDTH + timelineCanvasWidth }}>
+              <div
+                className="grid"
+                style={{
+                  gridTemplateColumns: `${TRACK_LABEL_WIDTH}px ${timelineCanvasWidth}px`,
+                }}
+              >
+                <div className="sticky left-0 z-20 border-b border-r border-line bg-surface p-4">
+                  <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                    {getViewHeader(boardMode)}
+                  </p>
+                </div>
+                <div className="flex h-16 border-b border-line bg-canvas/60">
+                  <div className="relative shrink-0" style={{ width: timelineWidth }}>
+                    {axisTicks.map((tick) => (
+                      <div
+                        key={tick.id}
+                        className="absolute top-0 h-full border-l border-line/70"
+                        style={{ left: `${tick.leftPercent}%` }}
+                      >
+                        <span className="absolute left-2 top-4 whitespace-nowrap text-xs text-muted">
+                          {tick.label}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                  <div aria-hidden="true" className="shrink-0" style={{ width: TIMELINE_END_GAP }} />
+                </div>
+
+                {histogramTracks.map((track) => {
+                  const trackHeight = getTrackHeight(track.laneCount);
+
+                  return (
+                    <div key={`${track.kind}-${track.id}`} className="contents">
+                      <div
+                        className="sticky left-0 z-10 border-b border-r border-line bg-surface p-4"
+                        style={{ height: trackHeight }}
+                      >
+                        <div className="flex items-center gap-3">
+                          {track.color ? (
+                            <span
+                              className="h-3.5 w-3.5 shrink-0 rounded-full border border-black/10"
+                              style={{ backgroundColor: track.color }}
+                            />
+                          ) : (
+                            <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line bg-canvas text-[0.65rem] font-semibold text-muted">
+                              {track.kind === "location" ? "LU" : "PE"}
+                            </span>
+                          )}
+                          <div className="min-w-0">
+                            <p className="truncate text-sm font-semibold text-ink">
+                              {track.label}
+                            </p>
+                            <p className="truncate text-xs text-muted">
+                              {track.meta ?? `${track.events.length} eventos`}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex border-b border-line bg-canvas/35" style={{ height: trackHeight }}>
+                        <div className="relative shrink-0" style={{ width: timelineWidth }}>
+                          {axisTicks.map((tick) => (
+                            <div
+                              key={`${track.id}-${tick.id}`}
+                              className="absolute top-0 h-full border-l border-line/40"
+                              style={{ left: `${tick.leftPercent}%` }}
+                            />
+                          ))}
+                          {track.events.map((item) => (
+                            <HistogramEventBlock
+                              key={`${track.kind}-${track.id}-${item.event.id}-${item.laneIndex}`}
+                              item={item}
+                              projectId={projectId}
+                              onRemove={handleRemove}
+                              busyKey={busyKey}
+                              continuityResults={continuityResultsByEvent.get(item.event.id) ?? []}
+                            />
+                          ))}
+                        </div>
+                        <div aria-hidden="true" className="shrink-0" style={{ width: TIMELINE_END_GAP }} />
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           </div>
-        ) : activeLocation ? (
-          <div className="w-64 rounded-[20px] border border-accent bg-surface p-3 shadow-[0_18px_50px_rgba(91,71,36,0.18)]">
-            <div className="flex items-center gap-3">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full border border-line bg-canvas text-xs font-semibold text-muted">
-                LO
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-ink">{activeLocation.name}</p>
-                <p className="text-xs text-muted">
-                  Suelta en Inicio o Fin
-                </p>
-              </div>
-            </div>
-          </div>
-        ) : null}
-      </DragOverlay>
-    </DndContext>
+        )}
+      </section>
+    </div>
   );
 }

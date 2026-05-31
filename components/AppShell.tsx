@@ -8,6 +8,7 @@ import clsx from "clsx";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { navigationItems } from "@/lib/continuity/navigation";
 import type { CurrentUser } from "@/lib/auth/current-user";
+import { BrandLogo } from "@/components/BrandLogo";
 import { LogoutButton } from "@/components/LogoutButton";
 
 const projectScopedRoutes = new Map<string, string>([
@@ -51,22 +52,15 @@ export function AppShell({
 
   return (
     <div className="min-h-screen">
-      <div className="mx-auto flex min-h-screen max-w-7xl gap-4 px-4 py-4 lg:px-6">
+      <div className="flex min-h-screen gap-4 px-4 py-4 lg:px-6">
         <aside
           className={clsx(
-            "fixed inset-y-4 left-4 z-30 flex w-72 flex-col overflow-y-auto rounded-[28px] border border-line bg-surface px-5 py-5 shadow-[0_22px_70px_rgba(91,71,36,0.12)] transition-transform lg:static lg:translate-x-0",
+            "fixed inset-y-4 left-4 z-30 flex w-72 shrink-0 flex-col overflow-y-auto rounded-[28px] border border-line bg-surface px-5 py-5 shadow-[0_22px_70px_rgba(91,71,36,0.12)] transition-transform lg:static lg:translate-x-0",
             isNavOpen ? "translate-x-0" : "-translate-x-[120%]",
           )}
         >
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                Continuity
-              </p>
-              <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-                Tracker
-              </h1>
-            </div>
+            <BrandLogo />
             <button
               type="button"
               onClick={() => setIsNavOpen(false)}
@@ -75,17 +69,6 @@ export function AppShell({
             >
               <PanelLeftClose size={18} />
             </button>
-          </div>
-
-          <p className="mt-5 text-sm leading-6 text-muted">{t("shellIntro")}</p>
-
-          <div className="mt-6 rounded-2xl border border-line bg-canvas/80 p-4">
-            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-              {t("workspace")}
-            </p>
-            <p className="mt-2 text-sm font-semibold text-ink">
-              {t("workspaceName")}
-            </p>
           </div>
 
           <nav className="mt-8 space-y-2">

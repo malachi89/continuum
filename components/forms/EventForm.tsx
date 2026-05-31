@@ -1,17 +1,6 @@
 "use client";
 
-import {
-  DndContext,
-  DragOverlay,
-  PointerSensor,
-  useDraggable,
-  useDroppable,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
 import type { Event, EventType } from "@prisma/client";
-import clsx from "clsx";
 import { useMemo, useState } from "react";
 import type { CrudActionState } from "@/app/(app)/projects/actions";
 import { eventTypeOptions } from "@/lib/continuity/constants";
@@ -39,7 +28,6 @@ type EventFormProps = {
 };
 
 type CharacterOption = { id: string; name: string; color: string };
-type CharacterColumn = "available" | "selected";
 
 function toDateTimeLocal(value?: Date | string | null) {
   if (!value) {
@@ -52,117 +40,6 @@ function toDateTimeLocal(value?: Date | string | null) {
     .slice(0, 16);
 }
 
-function getDropColumn(event: DragEndEvent) {
-  const column = event.over?.data.current?.column;
-
-  if (column === "available" || column === "selected") {
-    return column;
-  }
-
-  return undefined;
-}
-
-function DraggableCharacterCard({
-  character,
-  active,
-}: {
-  character: CharacterOption;
-  active?: boolean;
-}) {
-  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
-    id: `event-character:${character.id}`,
-    data: {
-      characterId: character.id,
-    },
-  });
-
-  const style = transform
-    ? {
-        transform: `translate3d(${transform.x}px, ${transform.y}px, 0)`,
-      }
-    : undefined;
-
-  return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      {...listeners}
-      {...attributes}
-      className={clsx(
-        "flex cursor-grab touch-none select-none items-center gap-3 rounded-2xl border px-3 py-2 text-sm transition active:cursor-grabbing",
-        active || isDragging
-          ? "border-accent bg-accent/10"
-          : "border-line bg-surface/80 hover:border-accent hover:bg-surface",
-        isDragging && "opacity-0",
-      )}
-    >
-      <span
-        className="h-3 w-3 rounded-full border border-black/10"
-        style={{ backgroundColor: character.color }}
-      />
-      <span className="min-w-0 flex-1 truncate font-medium text-ink">
-        {character.name}
-      </span>
-    </div>
-  );
-}
-
-function CharacterDropColumn({
-  title,
-  count,
-  column,
-  characters,
-  emptyLabel,
-  activeCharacterId,
-}: {
-  title: string;
-  count: number;
-  column: CharacterColumn;
-  characters: CharacterOption[];
-  emptyLabel: string;
-  activeCharacterId: string | null;
-}) {
-  const { isOver, setNodeRef } = useDroppable({
-    id: `event-character-column:${column}`,
-    data: {
-      column,
-    },
-  });
-
-  return (
-    <div
-      ref={setNodeRef}
-      className={clsx(
-        "min-h-48 rounded-[22px] border p-4 transition",
-        isOver ? "border-accent bg-accent/10" : "border-line bg-canvas/50",
-      )}
-    >
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-ink">{title}</p>
-        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted">
-          {count}
-        </span>
-      </div>
-
-      <div className="mt-3 space-y-2">
-        {characters.length === 0 ? (
-          <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-3 py-4 text-sm text-muted">
-            {emptyLabel}
-          </p>
-        ) : (
-          characters.map((character) => (
-            <DraggableCharacterCard
-              key={character.id}
-              character={character}
-              active={activeCharacterId === character.id}
-            />
-          ))
-        )}
-      </div>
-    </div>
-  );
-}
-
 export function EventCharacterSelector({
   characters,
   initialSelectedCharacterIds = [],
@@ -170,14 +47,12 @@ export function EventCharacterSelector({
   characters: CharacterOption[];
   initialSelectedCharacterIds?: string[];
 }) {
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const [selectedCharacterIds, setSelectedCharacterIds] = useState(() => {
     const initialIds = new Set(initialSelectedCharacterIds);
     return characters
       .filter((character) => initialIds.has(character.id))
       .map((character) => character.id);
   });
-  const [activeCharacterId, setActiveCharacterId] = useState<string | null>(null);
 
   const selectedIdSet = useMemo(
     () => new Set(selectedCharacterIds),
@@ -196,38 +71,14 @@ export function EventCharacterSelector({
         .filter((character): character is CharacterOption => Boolean(character)),
     [characters, selectedCharacterIds],
   );
-  const activeCharacter =
-    activeCharacterId === null
-      ? null
-      : characters.find((character) => character.id === activeCharacterId) ?? null;
 
-  function moveCharacter(characterId: string, column: CharacterColumn) {
+  function toggleCharacter(characterId: string) {
     setSelectedCharacterIds((currentIds) => {
-      const isSelected = currentIds.includes(characterId);
-
-      if (column === "selected" && !isSelected) {
-        return [...currentIds, characterId];
-      }
-
-      if (column === "available" && isSelected) {
+      if (currentIds.includes(characterId)) {
         return currentIds.filter((id) => id !== characterId);
       }
-
-      return currentIds;
+      return [...currentIds, characterId];
     });
-  }
-
-  function handleCharacterDragEnd(event: DragEndEvent) {
-    setActiveCharacterId(null);
-
-    const characterId = event.active.data.current?.characterId;
-    const column = getDropColumn(event);
-
-    if (typeof characterId !== "string" || !column) {
-      return;
-    }
-
-    moveCharacter(characterId, column);
   }
 
   return (
@@ -248,49 +99,73 @@ export function EventCharacterSelector({
           </p>
         </div>
       ) : (
-        <DndContext
-          sensors={sensors}
-          onDragStart={(event) => {
-            const characterId = event.active.data.current?.characterId;
-            setActiveCharacterId(typeof characterId === "string" ? characterId : null);
-          }}
-          onDragCancel={() => setActiveCharacterId(null)}
-          onDragEnd={handleCharacterDragEnd}
-        >
-          <div className="grid gap-4 md:grid-cols-2">
-            <CharacterDropColumn
-              title="Disponibles"
-              count={availableCharacters.length}
-              column="available"
-              characters={availableCharacters}
-              emptyLabel="No hay personajes disponibles."
-              activeCharacterId={activeCharacterId}
-            />
-            <CharacterDropColumn
-              title="Seleccionados"
-              count={selectedCharacters.length}
-              column="selected"
-              characters={selectedCharacters}
-              emptyLabel="Sin personajes seleccionados."
-              activeCharacterId={activeCharacterId}
-            />
-          </div>
-
-          <DragOverlay>
-            {activeCharacter ? (
-              <div className="flex w-64 items-center gap-3 rounded-2xl border border-accent bg-surface px-3 py-2 text-sm shadow-[0_18px_50px_rgba(91,71,36,0.18)]">
-                <span
-                  className="h-3 w-3 rounded-full border border-black/10"
-                  style={{ backgroundColor: activeCharacter.color }}
-                />
-                <span className="truncate font-medium text-ink">
-                  {activeCharacter.name}
-                </span>
-              </div>
-            ) : null}
-          </DragOverlay>
-        </DndContext>
+        <div className="grid gap-4 md:grid-cols-2">
+          <CharacterColumn
+            title="Disponibles"
+            count={availableCharacters.length}
+            characters={availableCharacters}
+            emptyLabel="No hay personajes disponibles."
+            onCharacterClick={toggleCharacter}
+          />
+          <CharacterColumn
+            title="Seleccionados"
+            count={selectedCharacters.length}
+            characters={selectedCharacters}
+            emptyLabel="Sin personajes seleccionados."
+            onCharacterClick={toggleCharacter}
+          />
+        </div>
       )}
+    </div>
+  );
+}
+
+function CharacterColumn({
+  title,
+  count,
+  characters,
+  emptyLabel,
+  onCharacterClick,
+}: {
+  title: string;
+  count: number;
+  characters: CharacterOption[];
+  emptyLabel: string;
+  onCharacterClick: (characterId: string) => void;
+}) {
+  return (
+    <div className="min-h-48 rounded-[22px] border border-line bg-canvas/50 p-4">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-ink">{title}</p>
+        <span className="rounded-full border border-line bg-surface px-2.5 py-1 text-xs font-semibold text-muted">
+          {count}
+        </span>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {characters.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-line bg-surface/60 px-3 py-4 text-sm text-muted">
+            {emptyLabel}
+          </p>
+        ) : (
+          characters.map((character) => (
+            <button
+              key={character.id}
+              type="button"
+              onClick={() => onCharacterClick(character.id)}
+              className="flex w-full cursor-pointer items-center gap-3 rounded-2xl border border-line bg-surface/80 px-3 py-2 text-sm text-left transition hover:border-accent hover:bg-surface"
+            >
+              <span
+                className="h-3 w-3 shrink-0 rounded-full border border-black/10"
+                style={{ backgroundColor: character.color }}
+              />
+              <span className="min-w-0 flex-1 truncate font-medium text-ink">
+                {character.name}
+              </span>
+            </button>
+          ))
+        )}
+      </div>
     </div>
   );
 }

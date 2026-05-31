@@ -77,18 +77,6 @@ describe("continuity analysis", () => {
     expect(impossibleTravel?.explanation).toContain("requeriria");
   });
 
-  it("warns about missing coordinates without crashing analysis", () => {
-    const project = createBaseProject();
-    project.locations[1] = {
-      ...project.locations[1],
-      latitude: null,
-      longitude: null,
-    };
-
-    const results = analyzeProjectContinuity(project);
-    expect(results.some((result) => result.code === "LOCATION_MISSING_COORDINATES")).toBe(true);
-  });
-
   it("detects overlapping events for the same character", () => {
     const project = createBaseProject();
     project.events[1] = {

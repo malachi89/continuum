@@ -21,7 +21,7 @@ export const dictionary = {
       "Prepara respaldos, intercambio de datos y paquetes portables.",
     homeDescription:
       "Abre un proyecto para revisar personajes, eventos, locaciones, timeline y señales de continuidad.",
-    homeTitle: "Continuity Tracker",
+    homeTitle: "Continuum",
     language: "Idioma",
     locations: "Locaciones",
     locationsDescription: "Centraliza lugares, reglas internas y notas visuales.",
@@ -46,7 +46,7 @@ export const dictionary = {
     timeline: "Línea de tiempo",
     timelineDescription: "Visualiza secuencias, orden temporal y conflictos de canon.",
     workspace: "Espacio de trabajo",
-    workspaceName: "Continuity Tracker / Base",
+    workspaceName: "Continuum",
   },
   en: {
     account: "Account",
@@ -66,7 +66,7 @@ export const dictionary = {
       "Prepare backups, data exchange, and portable packages.",
     homeDescription:
       "Open a project to review characters, events, locations, timeline, and continuity signals.",
-    homeTitle: "Continuity Tracker",
+    homeTitle: "Continuum",
     language: "Language",
     locations: "Locations",
     locationsDescription: "Centralize places, internal rules, and visual notes.",
@@ -91,7 +91,7 @@ export const dictionary = {
     timeline: "Timeline",
     timelineDescription: "Visualize sequences, time order, and canon conflicts.",
     workspace: "Workspace",
-    workspaceName: "Continuity Tracker / Bootstrap",
+    workspaceName: "Continuum",
   },
 } as const;
 
