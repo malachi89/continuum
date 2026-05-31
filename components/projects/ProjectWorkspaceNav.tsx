@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import clsx from "clsx";
 import { projectSectionLinks } from "@/lib/continuity/constants";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export function ProjectWorkspaceNav({
   projectId,
@@ -11,6 +12,7 @@ export function ProjectWorkspaceNav({
   projectId: string;
 }) {
   const currentPath = usePathname();
+  const { t } = useLanguage();
 
   return (
     <nav className="flex flex-wrap gap-2">
@@ -32,7 +34,7 @@ export function ProjectWorkspaceNav({
                 : "border-line bg-canvas/70 text-ink hover:border-accent hover:bg-surface",
             )}
           >
-            <span>{item.label}</span>
+            <span>{t(item.labelKey)}</span>
             <span className="font-mono text-[11px] uppercase tracking-[0.25em] opacity-75">
               {item.shortLabel}
             </span>

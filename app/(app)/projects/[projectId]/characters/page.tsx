@@ -1,9 +1,45 @@
-import { createCharacterAction } from "@/app/(app)/projects/actions";
 import Link from "next/link";
+import { createCharacterAction } from "@/app/(app)/projects/actions";
 import { CharacterForm } from "@/components/forms/CharacterForm";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getOwnedProject, getOwnedProjectCharacters } from "@/lib/continuity/data";
+import { getServerLanguage } from "@/lib/i18n/server";
+
+const copy = {
+  es: {
+    newCharacter: "Nuevo personaje",
+    cast: "Reparto de",
+    createCharacter: "Crear personaje",
+    noCharactersTitle: "No hay personajes todavía",
+    noCharactersBody:
+      "Empieza con protagonistas, secundarios o testigos de continuidad para conectar los eventos del proyecto.",
+    register: "Registro",
+    registeredCharacters: "Personajes registrados",
+    character: "Personaje",
+    alias: "Alias",
+    status: "Estado",
+    action: "Accion",
+    noAlias: "Sin alias",
+    detail: "Detalle",
+  },
+  en: {
+    newCharacter: "New character",
+    cast: "Cast for",
+    createCharacter: "Create character",
+    noCharactersTitle: "There are no characters yet",
+    noCharactersBody:
+      "Start with protagonists, supporting characters, or continuity witnesses to connect the project events.",
+    register: "Registry",
+    registeredCharacters: "Registered characters",
+    character: "Character",
+    alias: "Alias",
+    status: "Status",
+    action: "Action",
+    noAlias: "No alias",
+    detail: "Detail",
+  },
+} as const;
 
 export default async function ProjectCharactersPage({
   params,
@@ -15,6 +51,8 @@ export default async function ProjectCharactersPage({
     getOwnedProject(projectId),
     getOwnedProjectCharacters(projectId),
   ]);
+  const language = await getServerLanguage();
+  const text = copy[language];
   const redirectTo = `/projects/${projectId}/characters`;
 
   return (
@@ -23,9 +61,11 @@ export default async function ProjectCharactersPage({
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-              Nuevo personaje
+              {text.newCharacter}
             </p>
-            <h3 className="mt-3 text-2xl font-semibold">Reparto de {project.title}</h3>
+            <h3 className="mt-3 text-2xl font-semibold">
+              {text.cast} {project.title}
+            </h3>
           </div>
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-canvas/70 text-2xl leading-none text-ink transition">
             +
@@ -34,7 +74,7 @@ export default async function ProjectCharactersPage({
         <div className="mt-5">
           <CharacterForm
             action={createCharacterAction}
-            submitLabel="Crear personaje"
+            submitLabel={text.createCharacter}
             projectId={projectId}
             redirectTo={redirectTo}
           />
@@ -44,29 +84,29 @@ export default async function ProjectCharactersPage({
       {characters.length === 0 ? (
         <EmptyState
           eyebrow="CH"
-          title="No hay personajes todavía"
-          body="Empieza con protagonistas, secundarios o testigos de continuidad para conectar los eventos del proyecto."
+          title={text.noCharactersTitle}
+          body={text.noCharactersBody}
         />
       ) : (
         <section className="rounded-[28px] border border-line bg-surface p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                Registro
+                {text.register}
               </p>
-              <h3 className="mt-2 text-xl font-semibold">Personajes registrados</h3>
+              <h3 className="mt-2 text-xl font-semibold">{text.registeredCharacters}</h3>
             </div>
-            <Badge tone="success">{characters.length} personajes</Badge>
+            <Badge tone="success">{characters.length} {text.character.toLowerCase()}</Badge>
           </div>
 
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-[0.18em] text-muted">
-                  <th className="py-3 pr-4 font-medium">Personaje</th>
-                  <th className="px-4 py-3 font-medium">Alias</th>
-                  <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="py-3 pl-4 text-right font-medium">Accion</th>
+                  <th className="py-3 pr-4 font-medium">{text.character}</th>
+                  <th className="px-4 py-3 font-medium">{text.alias}</th>
+                  <th className="px-4 py-3 font-medium">{text.status}</th>
+                  <th className="py-3 pl-4 text-right font-medium">{text.action}</th>
                 </tr>
               </thead>
               <tbody>
@@ -81,7 +121,7 @@ export default async function ProjectCharactersPage({
                         <span className="font-semibold text-ink">{character.name}</span>
                       </div>
                     </td>
-                    <td className="px-4 py-4 text-muted">{character.alias ?? "Sin alias"}</td>
+                    <td className="px-4 py-4 text-muted">{character.alias ?? text.noAlias}</td>
                     <td className="px-4 py-4">
                       <Badge>{character.status}</Badge>
                     </td>
@@ -90,7 +130,7 @@ export default async function ProjectCharactersPage({
                         href={`/projects/${projectId}/characters/${character.id}`}
                         className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
                       >
-                        Detalle
+                        {text.detail}
                       </Link>
                     </td>
                   </tr>

@@ -1,9 +1,53 @@
-import { createLocationAction } from "@/app/(app)/projects/actions";
 import Link from "next/link";
+import { createLocationAction } from "@/app/(app)/projects/actions";
 import { LocationForm } from "@/components/forms/LocationForm";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { getOwnedProject, getOwnedProjectLocations } from "@/lib/continuity/data";
+import { getServerLanguage } from "@/lib/i18n/server";
+
+const copy = {
+  es: {
+    newLocation: "Nueva locacion",
+    map: "Mapa narrativo de",
+    createLocation: "Crear locacion",
+    noLocationsTitle: "No hay locaciones todavia",
+    noLocationsBody:
+      "Puedes cargar lugares exactos o dejar escenas sin locacion para que el analizador lo marque despues.",
+    register: "Registro",
+    registeredLocations: "Locaciones registradas",
+    location: "Locación",
+    type: "Tipo",
+    coordinates: "Coordenadas",
+    notes: "Notas",
+    action: "Accion",
+    noDescription: "Sin descripcion",
+    noDefined: "Sin definir",
+    withNotes: "Con notas",
+    noNotes: "Sin notas",
+    detail: "Detalle",
+  },
+  en: {
+    newLocation: "New location",
+    map: "Narrative map for",
+    createLocation: "Create location",
+    noLocationsTitle: "There are no locations yet",
+    noLocationsBody:
+      "You can load exact places or leave scenes without a location so the analyzer can flag them later.",
+    register: "Registry",
+    registeredLocations: "Registered locations",
+    location: "Location",
+    type: "Type",
+    coordinates: "Coordinates",
+    notes: "Notes",
+    action: "Action",
+    noDescription: "No description",
+    noDefined: "Unset",
+    withNotes: "With notes",
+    noNotes: "No notes",
+    detail: "Detail",
+  },
+} as const;
 
 export default async function ProjectLocationsPage({
   params,
@@ -15,6 +59,8 @@ export default async function ProjectLocationsPage({
     getOwnedProject(projectId),
     getOwnedProjectLocations(projectId),
   ]);
+  const language = await getServerLanguage();
+  const text = copy[language];
   const redirectTo = `/projects/${projectId}/locations`;
 
   return (
@@ -23,9 +69,11 @@ export default async function ProjectLocationsPage({
         <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-              Nueva locacion
+              {text.newLocation}
             </p>
-            <h3 className="mt-3 text-2xl font-semibold">Mapa narrativo de {project.title}</h3>
+            <h3 className="mt-3 text-2xl font-semibold">
+              {text.map} {project.title}
+            </h3>
           </div>
           <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-canvas/70 text-2xl leading-none text-ink transition">
             +
@@ -34,7 +82,7 @@ export default async function ProjectLocationsPage({
         <div className="mt-5">
           <LocationForm
             action={createLocationAction}
-            submitLabel="Crear locacion"
+            submitLabel={text.createLocation}
             projectId={projectId}
             redirectTo={redirectTo}
           />
@@ -44,30 +92,30 @@ export default async function ProjectLocationsPage({
       {locations.length === 0 ? (
         <EmptyState
           eyebrow="LO"
-          title="No hay locaciones todavia"
-          body="Puedes cargar lugares exactos o dejar escenas sin locacion para que el analizador lo marque despues."
+          title={text.noLocationsTitle}
+          body={text.noLocationsBody}
         />
       ) : (
         <section className="rounded-[28px] border border-line bg-surface p-6">
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                Registro
+                {text.register}
               </p>
-              <h3 className="mt-2 text-xl font-semibold">Locaciones registradas</h3>
+              <h3 className="mt-2 text-xl font-semibold">{text.registeredLocations}</h3>
             </div>
-            <Badge tone="success">{locations.length} locaciones</Badge>
+            <Badge tone="success">{locations.length} {text.location.toLowerCase()}</Badge>
           </div>
 
           <div className="mt-5 overflow-x-auto">
             <table className="w-full min-w-[760px] border-collapse text-left text-sm">
               <thead>
                 <tr className="border-b border-line text-xs uppercase tracking-[0.18em] text-muted">
-                  <th className="py-3 pr-4 font-medium">Locación</th>
-                  <th className="px-4 py-3 font-medium">Tipo</th>
-                  <th className="px-4 py-3 font-medium">Coordenadas</th>
-                  <th className="px-4 py-3 font-medium">Notas</th>
-                  <th className="py-3 pl-4 text-right font-medium">Accion</th>
+                  <th className="py-3 pr-4 font-medium">{text.location}</th>
+                  <th className="px-4 py-3 font-medium">{text.type}</th>
+                  <th className="px-4 py-3 font-medium">{text.coordinates}</th>
+                  <th className="px-4 py-3 font-medium">{text.notes}</th>
+                  <th className="py-3 pl-4 text-right font-medium">{text.action}</th>
                 </tr>
               </thead>
               <tbody>
@@ -77,7 +125,7 @@ export default async function ProjectLocationsPage({
                       <div>
                         <span className="font-semibold text-ink">{location.name}</span>
                         <p className="mt-1 line-clamp-2 text-muted">
-                          {location.description ?? "Sin descripcion"}
+                          {location.description ?? text.noDescription}
                         </p>
                       </div>
                     </td>
@@ -87,17 +135,17 @@ export default async function ProjectLocationsPage({
                     <td className="px-4 py-4 text-muted">
                       {location.latitude !== null && location.longitude !== null
                         ? `${location.latitude}, ${location.longitude}`
-                        : "Sin definir"}
+                        : text.noDefined}
                     </td>
                     <td className="px-4 py-4 text-muted">
-                      {location.notes ? "Con notas" : "Sin notas"}
+                      {location.notes ? text.withNotes : text.noNotes}
                     </td>
                     <td className="py-4 pl-4 text-right">
                       <Link
                         href={`/projects/${projectId}/locations/${location.id}`}
                         className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
                       >
-                        Detalle
+                        {text.detail}
                       </Link>
                     </td>
                   </tr>

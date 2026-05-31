@@ -17,11 +17,21 @@ type ProjectSummary = {
 export function ProjectRoutePicker({
   title,
   description,
+  sectionLabel,
+  emptyEyebrow,
+  emptyTitle,
+  emptyBody,
+  emptyActionLabel,
   routeSuffix,
   projects,
 }: {
   title: string;
   description?: string;
+  sectionLabel: string;
+  emptyEyebrow: string;
+  emptyTitle: string;
+  emptyBody: string;
+  emptyActionLabel: string;
   routeSuffix:
     | "/characters"
     | "/locations"
@@ -34,10 +44,10 @@ export function ProjectRoutePicker({
   if (projects.length === 0) {
     return (
       <EmptyState
-        eyebrow="PICK"
-        title="Primero crea un proyecto"
-        body="Estas vistas trabajan dentro del contexto de un proyecto. Apenas tengas uno, podras entrar directo a sus personajes, locaciones o eventos."
-        actionLabel="Ir a proyectos"
+        eyebrow={emptyEyebrow}
+        title={emptyTitle}
+        body={emptyBody}
+        actionLabel={emptyActionLabel}
         actionHref="/projects"
       />
     );
@@ -46,7 +56,7 @@ export function ProjectRoutePicker({
   return (
     <section className="space-y-6">
       <div className="rounded-[28px] border border-line bg-surface/80 p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">Ruta</p>
+        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">{sectionLabel}</p>
         <h2 className="mt-3 text-3xl font-semibold tracking-tight">{title}</h2>
         {description ? (
           <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">{description}</p>

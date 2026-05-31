@@ -13,6 +13,7 @@ import {
   SubmitButton,
   useCrudForm,
 } from "@/components/forms/FormPrimitives";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type EventFormProps = {
   action: (state: CrudActionState, formData: FormData) => Promise<CrudActionState>;
@@ -28,6 +29,47 @@ type EventFormProps = {
 };
 
 type CharacterOption = { id: string; name: string; color: string };
+
+const copy = {
+  es: {
+    characters: "Personajes",
+    createCharactersFirst: "Crea personajes primero para vincularlos a este evento.",
+    available: "Disponibles",
+    selected: "Seleccionados",
+    noCharactersAvailable: "No hay personajes disponibles.",
+    noCharactersSelected: "Sin personajes seleccionados.",
+    title: "Titulo",
+    type: "Tipo",
+    description: "Descripcion",
+    internalStart: "Inicio interno",
+    internalEnd: "Fin interno",
+    startLocation: "Locacion inicial",
+    endLocation: "Locacion final",
+    chapterOrEpisode: "Capitulo / episodio",
+    narrativeOrder: "Orden narrativo",
+    notes: "Notas",
+    noLocation: "Sin definir",
+  },
+  en: {
+    characters: "Characters",
+    createCharactersFirst: "Create characters first to link them to this event.",
+    available: "Available",
+    selected: "Selected",
+    noCharactersAvailable: "No characters available.",
+    noCharactersSelected: "No characters selected.",
+    title: "Title",
+    type: "Type",
+    description: "Description",
+    internalStart: "Internal start",
+    internalEnd: "Internal end",
+    startLocation: "Start location",
+    endLocation: "End location",
+    chapterOrEpisode: "Chapter / episode",
+    narrativeOrder: "Narrative order",
+    notes: "Notes",
+    noLocation: "Unset",
+  },
+} as const;
 
 function toDateTimeLocal(value?: Date | string | null) {
   if (!value) {
@@ -47,6 +89,8 @@ export function EventCharacterSelector({
   characters: CharacterOption[];
   initialSelectedCharacterIds?: string[];
 }) {
+  const { language } = useLanguage();
+  const text = copy[language];
   const [selectedCharacterIds, setSelectedCharacterIds] = useState(() => {
     const initialIds = new Set(initialSelectedCharacterIds);
     return characters
@@ -83,7 +127,7 @@ export function EventCharacterSelector({
 
   return (
     <div>
-      <p className="mb-2 block text-sm font-medium text-ink">Personajes</p>
+      <p className="mb-2 block text-sm font-medium text-ink">{text.characters}</p>
       {selectedCharacterIds.map((characterId) => (
         <input
           key={characterId}
@@ -95,23 +139,23 @@ export function EventCharacterSelector({
       {characters.length === 0 ? (
         <div className="rounded-[24px] border border-line bg-canvas/50 p-4">
           <p className="text-sm text-muted">
-            Crea personajes primero para vincularlos a este evento.
+            {text.createCharactersFirst}
           </p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
           <CharacterColumn
-            title="Disponibles"
+            title={text.available}
             count={availableCharacters.length}
             characters={availableCharacters}
-            emptyLabel="No hay personajes disponibles."
+            emptyLabel={text.noCharactersAvailable}
             onCharacterClick={toggleCharacter}
           />
           <CharacterColumn
-            title="Seleccionados"
+            title={text.selected}
             count={selectedCharacters.length}
             characters={selectedCharacters}
-            emptyLabel="Sin personajes seleccionados."
+            emptyLabel={text.noCharactersSelected}
             onCharacterClick={toggleCharacter}
           />
         </div>
@@ -180,6 +224,8 @@ export function EventForm({
   initialValues,
 }: EventFormProps) {
   const [state, formAction] = useCrudForm(action);
+  const { language } = useLanguage();
+  const text = copy[language];
 
   return (
     <form action={formAction} className="space-y-4">
@@ -188,10 +234,10 @@ export function EventForm({
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Titulo">
+        <Field label={text.title}>
           <Input required name="title" defaultValue={initialValues?.title ?? ""} />
         </Field>
-        <Field label="Tipo">
+        <Field label={text.type}>
           <Select name="eventType" defaultValue={initialValues?.eventType ?? "SCENE"}>
             {eventTypeOptions.map((eventType) => (
               <option key={eventType} value={eventType}>
@@ -202,12 +248,12 @@ export function EventForm({
         </Field>
       </div>
 
-      <Field label="Descripcion">
+      <Field label={text.description}>
         <Textarea name="description" defaultValue={initialValues?.description ?? ""} />
       </Field>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Inicio interno">
+        <Field label={text.internalStart}>
           <Input
             required
             name="internalStart"
@@ -215,7 +261,7 @@ export function EventForm({
             defaultValue={toDateTimeLocal(initialValues?.internalStart)}
           />
         </Field>
-        <Field label="Fin interno">
+        <Field label={text.internalEnd}>
           <Input
             required
             name="internalEnd"
@@ -226,9 +272,9 @@ export function EventForm({
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <Field label="Locacion inicial">
+        <Field label={text.startLocation}>
           <Select name="startLocationId" defaultValue={initialValues?.startLocationId ?? ""}>
-            <option value="">Sin definir</option>
+            <option value="">{text.noLocation}</option>
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
@@ -236,9 +282,9 @@ export function EventForm({
             ))}
           </Select>
         </Field>
-        <Field label="Locacion final">
+        <Field label={text.endLocation}>
           <Select name="endLocationId" defaultValue={initialValues?.endLocationId ?? ""}>
-            <option value="">Sin definir</option>
+            <option value="">{text.noLocation}</option>
             {locations.map((location) => (
               <option key={location.id} value={location.id}>
                 {location.name}
@@ -246,13 +292,13 @@ export function EventForm({
             ))}
           </Select>
         </Field>
-        <Field label="Capitulo / episodio">
+        <Field label={text.chapterOrEpisode}>
           <Input
             name="chapterOrEpisode"
             defaultValue={initialValues?.chapterOrEpisode ?? ""}
           />
         </Field>
-        <Field label="Orden narrativo">
+        <Field label={text.narrativeOrder}>
           <Input
             name="narrativeOrder"
             type="number"
@@ -267,7 +313,7 @@ export function EventForm({
         initialSelectedCharacterIds={initialValues?.selectedCharacterIds ?? []}
       />
 
-      <Field label="Notas">
+      <Field label={text.notes}>
         <Textarea name="notes" defaultValue={initialValues?.notes ?? ""} />
       </Field>
 

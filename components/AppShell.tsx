@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import clsx from "clsx";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { navigationItems } from "@/lib/continuity/navigation";
@@ -45,9 +45,18 @@ export function AppShell({
   currentUser: CurrentUser;
 }) {
   const pathname = usePathname();
+  const router = useRouter();
   const activeProjectId = getActiveProjectId(pathname);
   const { language, setLanguage, t } = useLanguage();
   const [isNavOpen, setIsNavOpen] = useState(false);
+  const previousLanguage = useRef(language);
+
+  useEffect(() => {
+    if (previousLanguage.current !== language) {
+      previousLanguage.current = language;
+      router.refresh();
+    }
+  }, [language, router]);
 
   return (
     <div className="min-h-screen">
@@ -102,37 +111,6 @@ export function AppShell({
 
           <div className="mt-auto space-y-4 pt-8">
             <div className="rounded-2xl border border-line bg-canvas/80 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                  {t("language")}
-                </p>
-                <span className="rounded-full border border-line bg-surface px-3 py-1 text-xs font-semibold uppercase text-ink">
-                  {language.toUpperCase()}
-                </span>
-              </div>
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                {(["es", "en"] as const).map((option) => {
-                  const active = language === option;
-                  return (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => setLanguage(option)}
-                      className={clsx(
-                        "rounded-xl px-3 py-2 text-sm font-semibold uppercase transition",
-                        active
-                          ? "bg-ink text-surface"
-                          : "bg-surface text-muted hover:bg-surface-strong hover:text-ink",
-                      )}
-                    >
-                      {option}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            <div className="rounded-2xl border border-line bg-canvas/80 p-4">
               <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
                 {t("account")}
               </p>
@@ -141,6 +119,39 @@ export function AppShell({
               </p>
               <div className="mt-4">
                 <LogoutButton className="w-full" />
+              </div>
+            </div>
+
+            <div className="flex justify-center pb-1">
+              <div
+                role="group"
+                aria-label={t("language")}
+                className="relative inline-flex h-9 w-28 items-center rounded-full border border-line bg-canvas/70 p-1 shadow-[0_8px_24px_rgba(91,71,36,0.08)]"
+              >
+                <span
+                  aria-hidden="true"
+                  className={clsx(
+                    "absolute inset-y-1 left-1 w-1/2 rounded-full bg-ink transition-transform duration-200 ease-out",
+                    language === "en" ? "translate-x-full" : "translate-x-0",
+                  )}
+                />
+                {(["es", "en"] as const).map((option) => {
+                  const active = language === option;
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => setLanguage(option)}
+                      aria-pressed={active}
+                      className={clsx(
+                        "relative z-10 flex-1 rounded-full text-[11px] font-semibold uppercase tracking-[0.22em] transition",
+                        active ? "text-surface" : "text-muted hover:text-ink",
+                      )}
+                    >
+                      {option}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </div>

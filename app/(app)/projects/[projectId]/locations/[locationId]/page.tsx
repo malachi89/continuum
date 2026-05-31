@@ -1,15 +1,57 @@
+import Link from "next/link";
 import {
   deleteLocationAction,
   updateLocationAction,
 } from "@/app/(app)/projects/actions";
-import Link from "next/link";
 import { DeleteResourceForm } from "@/components/forms/DeleteResourceForm";
 import { LocationForm } from "@/components/forms/LocationForm";
 import { Badge } from "@/components/ui/Badge";
 import { getOwnedProjectLocation } from "@/lib/continuity/data";
+import { getServerLanguage } from "@/lib/i18n/server";
 
-function formatCoordinate(value: number | null) {
-  return value !== null ? String(value) : "Sin definir";
+const copy = {
+  es: {
+    location: "Locacion",
+    back: "Volver a locaciones",
+    detail: "Detalle",
+    sheet: "Ficha de locacion",
+    description: "Descripcion",
+    noDescription: "Sin descripcion registrada.",
+    notes: "Notas",
+    noNotes: "Sin notas registradas.",
+    latitude: "Latitud",
+    longitude: "Longitud",
+    startEvents: "Eventos que inician aqui",
+    endEvents: "Eventos que terminan aqui",
+    edition: "Edicion",
+    updateLocation: "Actualizar locacion",
+    saveLocation: "Guardar locacion",
+    deleteLocation: "Borrar locacion",
+    noDefined: "Sin definir",
+  },
+  en: {
+    location: "Location",
+    back: "Back to locations",
+    detail: "Detail",
+    sheet: "Location sheet",
+    description: "Description",
+    noDescription: "No description recorded.",
+    notes: "Notes",
+    noNotes: "No notes recorded.",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    startEvents: "Events that start here",
+    endEvents: "Events that end here",
+    edition: "Edition",
+    updateLocation: "Update location",
+    saveLocation: "Save location",
+    deleteLocation: "Delete location",
+    noDefined: "Unset",
+  },
+} as const;
+
+function formatCoordinate(value: number | null, noValue: string) {
+  return value !== null ? String(value) : noValue;
 }
 
 export default async function ProjectLocationDetailPage({
@@ -19,6 +61,8 @@ export default async function ProjectLocationDetailPage({
 }) {
   const { projectId, locationId } = await params;
   const location = await getOwnedProjectLocation(projectId, locationId);
+  const language = await getServerLanguage();
+  const text = copy[language];
   const locationsPath = `/projects/${projectId}/locations`;
   const detailPath = `${locationsPath}/${locationId}`;
 
@@ -28,11 +72,11 @@ export default async function ProjectLocationDetailPage({
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div>
             <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-              Locacion
+              {text.location}
             </p>
             <h3 className="mt-2 text-2xl font-semibold">{location.name}</h3>
             <p className="mt-2 text-sm text-muted">
-              {location.project.title} · {location.description ?? "Sin descripcion"}
+              {location.project.title} · {location.description ?? text.noDescription}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -50,7 +94,7 @@ export default async function ProjectLocationDetailPage({
             href={locationsPath}
             className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
           >
-            Volver a locaciones
+            {text.back}
           </Link>
         </div>
       </section>
@@ -58,38 +102,42 @@ export default async function ProjectLocationDetailPage({
       <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
         <div className="rounded-[28px] border border-line bg-surface p-6">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-            Detalle
+            {text.detail}
           </p>
-          <h3 className="mt-3 text-xl font-semibold">Ficha de locacion</h3>
+          <h3 className="mt-3 text-xl font-semibold">{text.sheet}</h3>
 
           <dl className="mt-5 space-y-4 text-sm">
             <div>
-              <dt className="font-medium text-ink">Descripcion</dt>
+              <dt className="font-medium text-ink">{text.description}</dt>
               <dd className="mt-1 leading-6 text-muted">
-                {location.description ?? "Sin descripcion registrada."}
+                {location.description ?? text.noDescription}
               </dd>
             </div>
             <div>
-              <dt className="font-medium text-ink">Notas</dt>
+              <dt className="font-medium text-ink">{text.notes}</dt>
               <dd className="mt-1 leading-6 text-muted">
-                {location.notes ?? "Sin notas registradas."}
+                {location.notes ?? text.noNotes}
               </dd>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <dt className="font-medium text-ink">Latitud</dt>
-                <dd className="mt-1 text-muted">{formatCoordinate(location.latitude)}</dd>
+                <dt className="font-medium text-ink">{text.latitude}</dt>
+                <dd className="mt-1 text-muted">
+                  {formatCoordinate(location.latitude, text.noDefined)}
+                </dd>
               </div>
               <div>
-                <dt className="font-medium text-ink">Longitud</dt>
-                <dd className="mt-1 text-muted">{formatCoordinate(location.longitude)}</dd>
+                <dt className="font-medium text-ink">{text.longitude}</dt>
+                <dd className="mt-1 text-muted">
+                  {formatCoordinate(location.longitude, text.noDefined)}
+                </dd>
               </div>
               <div>
-                <dt className="font-medium text-ink">Eventos que inician aqui</dt>
+                <dt className="font-medium text-ink">{text.startEvents}</dt>
                 <dd className="mt-1 text-muted">{location._count.startEvents}</dd>
               </div>
               <div>
-                <dt className="font-medium text-ink">Eventos que terminan aqui</dt>
+                <dt className="font-medium text-ink">{text.endEvents}</dt>
                 <dd className="mt-1 text-muted">{location._count.endEvents}</dd>
               </div>
             </div>
@@ -98,13 +146,13 @@ export default async function ProjectLocationDetailPage({
 
         <div className="rounded-[28px] border border-line bg-surface p-6">
           <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-            Edicion
+            {text.edition}
           </p>
-          <h3 className="mt-3 text-xl font-semibold">Actualizar locacion</h3>
+          <h3 className="mt-3 text-xl font-semibold">{text.updateLocation}</h3>
           <div className="mt-5">
             <LocationForm
               action={updateLocationAction}
-              submitLabel="Guardar locacion"
+              submitLabel={text.saveLocation}
               projectId={projectId}
               redirectTo={detailPath}
               initialValues={location}
@@ -118,7 +166,7 @@ export default async function ProjectLocationDetailPage({
               resourceId={location.id}
               projectId={projectId}
               redirectTo={locationsPath}
-              label="Borrar locacion"
+              label={text.deleteLocation}
             />
           </div>
         </div>

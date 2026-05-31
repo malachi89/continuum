@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { IBM_Plex_Mono, Manrope } from "next/font/google";
 import "./globals.css";
 import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
+import { getServerLanguage } from "@/lib/i18n/server";
 
 const manrope = Manrope({
   variable: "--font-manrope",
@@ -19,19 +20,17 @@ export const metadata: Metadata = {
   description: "Continuum",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const language = await getServerLanguage();
+
   return (
-    <html
-      lang="en"
-      suppressHydrationWarning
-      className={`${manrope.variable} ${plexMono.variable} h-full`}
-    >
+    <html lang={language} suppressHydrationWarning className={`${manrope.variable} ${plexMono.variable} h-full`}>
       <body className="min-h-full bg-canvas text-ink antialiased">
-        <LanguageProvider>{children}</LanguageProvider>
+        <LanguageProvider initialLanguage={language}>{children}</LanguageProvider>
       </body>
     </html>
   );

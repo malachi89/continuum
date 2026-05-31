@@ -4,6 +4,7 @@ import type {
   EventCharacter,
   Location,
 } from "@prisma/client";
+import type { Language } from "@/lib/i18n/dictionary";
 import type { ContinuityResult } from "@/lib/continuity/types";
 
 type EventWithRelations = Event & {
@@ -129,6 +130,55 @@ const TIMELINE_SCALE_CONFIG: Record<
   },
 };
 
+const copy = {
+  es: {
+    weekLabel: "Semana del",
+    noCharacters: "Sin personajes",
+    noLocation: "Sin locacion",
+    locationMeta: "Locacion",
+    missingLocationTitle: "Evento sin locacion",
+    missingLocationBody: (title: string) => `"${title}" no tiene locacion inicial ni final.`,
+    overlapFlag: "Superposicion",
+    overlapTitle: "Eventos superpuestos",
+    overlapBody: (title: string, previousTitle: string) =>
+      `"${title}" empieza antes de que termine "${previousTitle}".`,
+    jumpFlag: "Cambio de locacion",
+    jumpTitle: "Salto rapido entre locaciones",
+    jumpBody: (
+      previousTitle: string,
+      previousLocation: string,
+      currentTitle: string,
+      currentLocation: string,
+      gapLabel: string,
+    ) =>
+      `"${previousTitle}" termina en ${previousLocation} y "${currentTitle}" arranca en ${currentLocation} con solo ${gapLabel}.`,
+    wideGapFlag: "Hueco amplio",
+  },
+  en: {
+    weekLabel: "Week of",
+    noCharacters: "No characters",
+    noLocation: "No location",
+    locationMeta: "Location",
+    missingLocationTitle: "Event without a location",
+    missingLocationBody: (title: string) => `"${title}" has no start or end location.`,
+    overlapFlag: "Overlap",
+    overlapTitle: "Overlapping events",
+    overlapBody: (title: string, previousTitle: string) =>
+      `"${title}" starts before "${previousTitle}" ends.`,
+    jumpFlag: "Location change",
+    jumpTitle: "Fast jump between locations",
+    jumpBody: (
+      previousTitle: string,
+      previousLocation: string,
+      currentTitle: string,
+      currentLocation: string,
+      gapLabel: string,
+    ) =>
+      `"${previousTitle}" ends in ${previousLocation} and "${currentTitle}" starts in ${currentLocation} with only ${gapLabel}.`,
+    wideGapFlag: "Wide gap",
+  },
+} as const;
+
 function getEventStartMs(event: TimelineEventCard) {
   return new Date(event.internalStartIso).getTime();
 }
@@ -144,15 +194,15 @@ function getTimelineScaleConfig(scale: TimelineScale) {
   return TIMELINE_SCALE_CONFIG[scale];
 }
 
-function formatTimelineDateLabel(value: number) {
-  return new Intl.DateTimeFormat("es-MX", {
+function formatTimelineDateLabel(value: number, language: Language) {
+  return new Intl.DateTimeFormat(language === "es" ? "es-MX" : "en-US", {
     month: "short",
     day: "numeric",
   }).format(new Date(value));
 }
 
-function formatTimelineHourLabel(value: number) {
-  return new Intl.DateTimeFormat("es-MX", {
+function formatTimelineHourLabel(value: number, language: Language) {
+  return new Intl.DateTimeFormat(language === "es" ? "es-MX" : "en-US", {
     month: "short",
     day: "numeric",
     hour: "2-digit",
@@ -160,16 +210,16 @@ function formatTimelineHourLabel(value: number) {
   }).format(new Date(value));
 }
 
-function formatTimelineTickLabel(value: number, scale: TimelineScale) {
+function formatTimelineTickLabel(value: number, scale: TimelineScale, language: Language) {
   if (scale === "hours") {
-    return formatTimelineHourLabel(value);
+    return formatTimelineHourLabel(value, language);
   }
 
   if (scale === "weeks") {
-    return `Semana del ${formatTimelineDateLabel(value)}`;
+    return `${copy[language].weekLabel} ${formatTimelineDateLabel(value, language)}`;
   }
 
-  return formatTimelineDateLabel(value);
+  return formatTimelineDateLabel(value, language);
 }
 
 function getTimelineScaleUnitCount(range: TimelineRange, scale: TimelineScale) {
@@ -260,6 +310,7 @@ export function getTimelineWidth(range: TimelineRange, scale: TimelineScale) {
 export function buildTimelineAxisTicks(
   range: TimelineRange,
   scale: TimelineScale,
+  language: Language = "es",
 ): TimelineAxisTick[] {
   const unitCount = getTimelineScaleUnitCount(range, scale);
   const step = Math.max(1, Math.ceil(unitCount / (MAX_AXIS_TICKS - 1)));
@@ -279,7 +330,7 @@ export function buildTimelineAxisTicks(
 
       return {
         id: `${range.startMs}-${scale}-${unitIndex}`,
-        label: formatTimelineTickLabel(value, scale),
+        label: formatTimelineTickLabel(value, scale, language),
         leftPercent,
       };
     });
@@ -368,6 +419,7 @@ function buildCharacterTracks(
   events: TimelineEventCard[],
   range: TimelineRange,
   minimumLaneDurationMs = 0,
+  language: Language = "es",
 ) {
   const tracks: TimelineHistogramTrack[] = characters.map((character) =>
     createTrack(
@@ -392,7 +444,7 @@ function buildCharacterTracks(
         {
           id: EMPTY_EVENT_TRACK_ID,
           kind: "character",
-          label: "Sin personajes",
+          label: copy[language].noCharacters,
           meta: null,
           color: "#6a6257",
           events: unassignedEvents,
@@ -410,6 +462,7 @@ function buildLocationTracks(
   events: TimelineEventCard[],
   range: TimelineRange,
   minimumLaneDurationMs = 0,
+  language: Language = "es",
 ) {
   const locationsById = new Map<string, { id: string; name: string }>();
 
@@ -427,7 +480,7 @@ function buildLocationTracks(
           id: location.id,
           kind: "location" as const,
           label: location.name,
-          meta: "Locacion",
+          meta: copy[language].locationMeta,
           color: null,
           events: events.filter((event) =>
             getUniqueEventLocations(event).some(
@@ -450,7 +503,7 @@ function buildLocationTracks(
         {
           id: EMPTY_LOCATION_TRACK_ID,
           kind: "location",
-          label: "Sin locacion",
+          label: copy[language].noLocation,
           meta: null,
           color: "#6a6257",
           events: eventsWithoutLocations,
@@ -471,6 +524,7 @@ export function buildTimelineHistogramTracks(
     events: TimelineEventCard[];
     range: TimelineRange;
     minimumLaneDurationMs?: number;
+    language?: Language;
   },
 ): TimelineHistogramTrack[] {
   if (input.mode === "location") {
@@ -478,6 +532,7 @@ export function buildTimelineHistogramTracks(
       input.events,
       input.range,
       input.minimumLaneDurationMs,
+      input.language,
     );
   }
 
@@ -486,6 +541,7 @@ export function buildTimelineHistogramTracks(
     input.events,
     input.range,
     input.minimumLaneDurationMs,
+    input.language,
   );
 }
 
@@ -505,6 +561,7 @@ export function indexContinuityResultsByEvent(results: ContinuityResult[]) {
 
 export function buildCharacterTracking(
   events: EventWithRelations[],
+  language: Language = "es",
 ): {
   timeline: CharacterTrackingItem[];
   conflicts: CharacterTrackingConflict[];
@@ -521,22 +578,22 @@ export function buildCharacterTracking(
     const flags: string[] = [];
 
     if (!event.startLocation && !event.endLocation) {
-      flags.push("Sin locacion");
+      flags.push(copy[language].noLocation);
       conflicts.push({
         id: `${event.id}-missing-location`,
         severity: "info",
-        title: "Evento sin locacion",
-        body: `"${event.title}" no tiene locacion inicial ni final.`,
+        title: copy[language].missingLocationTitle,
+        body: copy[language].missingLocationBody(event.title),
       });
     }
 
     if (gapMinutes !== null && gapMinutes < 0) {
-      flags.push("Superposicion");
+      flags.push(copy[language].overlapFlag);
       conflicts.push({
         id: `${event.id}-overlap`,
         severity: "warning",
-        title: "Eventos superpuestos",
-        body: `"${event.title}" empieza antes de que termine "${previousEvent?.title}".`,
+        title: copy[language].overlapTitle,
+        body: copy[language].overlapBody(event.title, previousEvent?.title ?? ""),
       });
     }
 
@@ -546,20 +603,26 @@ export function buildCharacterTracking(
       event.startLocation &&
       previousEvent.endLocation.id !== event.startLocation.id
     ) {
-      flags.push("Cambio de locacion");
+      flags.push(copy[language].jumpFlag);
 
       if (gapMinutes !== null && gapMinutes <= 60) {
         conflicts.push({
           id: `${event.id}-jump`,
           severity: "warning",
-          title: "Salto rapido entre locaciones",
-          body: `"${previousEvent.title}" termina en ${previousEvent.endLocation.name} y "${event.title}" arranca en ${event.startLocation.name} con solo ${formatGapLabel(Math.max(gapMinutes, 0))}.`,
+          title: copy[language].jumpTitle,
+          body: copy[language].jumpBody(
+            previousEvent.title,
+            previousEvent.endLocation.name,
+            event.title,
+            event.startLocation.name,
+            formatGapLabel(Math.max(gapMinutes, 0)),
+          ),
         });
       }
     }
 
     if (gapMinutes !== null && gapMinutes > 24 * 60) {
-      flags.push("Hueco amplio");
+      flags.push(copy[language].wideGapFlag);
     }
 
     timeline.push({

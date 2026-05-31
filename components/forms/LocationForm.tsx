@@ -12,6 +12,7 @@ import {
   SubmitButton,
   useCrudForm,
 } from "@/components/forms/FormPrimitives";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type LocationFormProps = {
   action: (state: CrudActionState, formData: FormData) => Promise<CrudActionState>;
@@ -23,6 +24,25 @@ type LocationFormProps = {
   };
 };
 
+const copy = {
+  es: {
+    name: "Nombre",
+    type: "Tipo",
+    description: "Descripcion",
+    latitude: "Latitud",
+    longitude: "Longitud",
+    notes: "Notas",
+  },
+  en: {
+    name: "Name",
+    type: "Type",
+    description: "Description",
+    latitude: "Latitude",
+    longitude: "Longitude",
+    notes: "Notes",
+  },
+} as const;
+
 export function LocationForm({
   action,
   submitLabel,
@@ -31,6 +51,8 @@ export function LocationForm({
   initialValues,
 }: LocationFormProps) {
   const [state, formAction] = useCrudForm(action);
+  const { language } = useLanguage();
+  const text = copy[language];
 
   return (
     <form action={formAction} className="space-y-4">
@@ -39,10 +61,10 @@ export function LocationForm({
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Nombre">
+        <Field label={text.name}>
           <Input required name="name" defaultValue={initialValues?.name ?? ""} />
         </Field>
-        <Field label="Tipo">
+        <Field label={text.type}>
           <Select name="type" defaultValue={initialValues?.type ?? "CITY"}>
             {locationTypeOptions.map((type) => (
               <option key={type} value={type}>
@@ -53,12 +75,12 @@ export function LocationForm({
         </Field>
       </div>
 
-      <Field label="Descripcion">
+      <Field label={text.description}>
         <Textarea name="description" defaultValue={initialValues?.description ?? ""} />
       </Field>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Latitud">
+        <Field label={text.latitude}>
           <Input
             name="latitude"
             type="number"
@@ -66,7 +88,7 @@ export function LocationForm({
             defaultValue={initialValues?.latitude ?? ""}
           />
         </Field>
-        <Field label="Longitud">
+        <Field label={text.longitude}>
           <Input
             name="longitude"
             type="number"
@@ -76,7 +98,7 @@ export function LocationForm({
         </Field>
       </div>
 
-      <Field label="Notas">
+      <Field label={text.notes}>
         <Textarea name="notes" defaultValue={initialValues?.notes ?? ""} />
       </Field>
 

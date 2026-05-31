@@ -5,8 +5,92 @@ import type {
   AnalyzableProject,
   ContinuityResult,
 } from "@/lib/continuity/types";
+import type { Language } from "@/lib/i18n/dictionary";
 
 const NON_LITERAL_RETURN_EVENT_TYPES = new Set(["FLASHBACK", "DREAM", "VISION"]);
+
+const copy = {
+  es: {
+    eventEndBeforeStart: (title: string, end: string, start: string) =>
+      `"${title}" termina antes de iniciar (${end} < ${start}).`,
+    eventEndBeforeStartFix: "Corrige el rango interno del evento o conviertelo en otro hito narrativo.",
+    sceneWithoutCharacters: (title: string) => `"${title}" no tiene personajes asignados.`,
+    sceneWithoutCharactersFix:
+      "Asigna al menos un personaje relevante o marca por que la escena debe quedar vacia.",
+    sceneWithoutLocation: (title: string) => `"${title}" no tiene locacion inicial ni final.`,
+    sceneWithoutLocationFix:
+      "Agrega una locacion o deja una nota editorial sobre la ausencia de espacio definido.",
+    characterAfterStatus: (
+      characterName: string,
+      eventTitle: string,
+      status: string,
+      statusDate: string,
+    ) =>
+      `${characterName} aparece en "${eventTitle}" despues de quedar ${status} desde ${statusDate}.`,
+    characterAfterStatusFix:
+      "Revisa el estado del personaje, la fecha interna o marca la escena como flashback, dream o vision.",
+    overlappingEvents: (
+      characterName: string,
+      previousTitle: string,
+      currentTitle: string,
+      locationSuffix: string,
+    ) =>
+      `${characterName} aparece en eventos traslapados: "${previousTitle}" y "${currentTitle}".${locationSuffix}`,
+    overlappingEventsLocationSuffix: (previous: string, current: string) =>
+      ` Ocurre entre ${previous} y ${current}.`,
+    overlappingEventsFix:
+      "Ajusta ventanas temporales o separa la participacion del personaje entre escenas compatibles.",
+    characterWithoutTravel: (
+      characterName: string,
+      previousLocation: string,
+      currentLocation: string,
+      currentTitle: string,
+    ) =>
+      `${characterName} cambia de ${previousLocation} a ${currentLocation} antes de "${currentTitle}" sin un evento de viaje intermedio.`,
+    characterWithoutTravelFix:
+      "Agrega un evento TRAVEL, ajusta locaciones o documenta el salto narrativo.",
+  },
+  en: {
+    eventEndBeforeStart: (title: string, end: string, start: string) =>
+      `"${title}" ends before it starts (${end} < ${start}).`,
+    eventEndBeforeStartFix: "Fix the event's internal range or turn it into another narrative beat.",
+    sceneWithoutCharacters: (title: string) => `"${title}" has no assigned characters.`,
+    sceneWithoutCharactersFix:
+      "Assign at least one relevant character or note why the scene should remain empty.",
+    sceneWithoutLocation: (title: string) => `"${title}" has no start or end location.`,
+    sceneWithoutLocationFix:
+      "Add a location or leave an editorial note about the missing space.",
+    characterAfterStatus: (
+      characterName: string,
+      eventTitle: string,
+      status: string,
+      statusDate: string,
+    ) =>
+      `${characterName} appears in "${eventTitle}" after becoming ${status} since ${statusDate}.`,
+    characterAfterStatusFix:
+      "Review the character status, internal date, or mark the scene as a flashback, dream, or vision.",
+    overlappingEvents: (
+      characterName: string,
+      previousTitle: string,
+      currentTitle: string,
+      locationSuffix: string,
+    ) =>
+      `${characterName} appears in overlapping events: "${previousTitle}" and "${currentTitle}".${locationSuffix}`,
+    overlappingEventsLocationSuffix: (previous: string, current: string) =>
+      ` It happens between ${previous} and ${current}.`,
+    overlappingEventsFix:
+      "Adjust the time windows or separate the character's participation between compatible scenes.",
+    characterWithoutTravel: (
+      characterName: string,
+      previousLocation: string,
+      currentLocation: string,
+      currentTitle: string,
+    ) =>
+      `${characterName} moves from ${previousLocation} to ${currentLocation} before "${currentTitle}" without an intermediate travel event.`,
+    characterWithoutTravelFix:
+      "Add a TRAVEL event, adjust locations, or document the narrative jump.",
+  },
+} as const;
 
 function formatDate(value: string) {
   return new Date(value).toISOString();
@@ -36,7 +120,10 @@ function sortChronologically(events: AnalyzableEvent[]) {
   );
 }
 
-export function analyzeProjectContinuity(project: AnalyzableProject): ContinuityResult[] {
+export function analyzeProjectContinuity(
+  project: AnalyzableProject,
+  language: Language = "es",
+): ContinuityResult[] {
   const results: ContinuityResult[] = [];
   const locationMap = getLocationMap(project.locations);
   const characterMap = getCharacterMap(project.characters);
@@ -53,10 +140,12 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
         severity: "ERROR",
         code: "EVENT_END_BEFORE_START",
         eventIds: [event.id],
-        explanation: `"${event.title}" termina antes de iniciar (${formatDate(
-          event.internalEnd,
-        )} < ${formatDate(event.internalStart)}).`,
-        suggestedFix: "Corrige el rango interno del evento o conviertelo en otro hito narrativo.",
+        explanation: copy[language].eventEndBeforeStart(
+          event.title,
+          formatDate(event.internalEnd),
+          formatDate(event.internalStart),
+        ),
+        suggestedFix: copy[language].eventEndBeforeStartFix,
       });
     }
 
@@ -65,8 +154,8 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
         severity: "WARNING",
         code: "SCENE_WITHOUT_CHARACTERS",
         eventIds: [event.id],
-        explanation: `"${event.title}" no tiene personajes asignados.`,
-        suggestedFix: "Asigna al menos un personaje relevante o marca por que la escena debe quedar vacia.",
+        explanation: copy[language].sceneWithoutCharacters(event.title),
+        suggestedFix: copy[language].sceneWithoutCharactersFix,
       });
     }
 
@@ -75,8 +164,8 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
         severity: "WARNING",
         code: "SCENE_WITHOUT_LOCATION",
         eventIds: [event.id],
-        explanation: `"${event.title}" no tiene locacion inicial ni final.`,
-        suggestedFix: "Agrega una locacion o deja una nota editorial sobre la ausencia de espacio definido.",
+        explanation: copy[language].sceneWithoutLocation(event.title),
+        suggestedFix: copy[language].sceneWithoutLocationFix,
       });
     }
 
@@ -110,8 +199,13 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
             code: "CHARACTER_APPEARS_AFTER_STATUS",
             characterId,
             eventIds: [event.id],
-            explanation: `${character.name} aparece en "${event.title}" despues de quedar ${character.status.toLowerCase()} desde ${formatDate(character.statusDateInternal)}.`,
-            suggestedFix: "Revisa el estado del personaje, la fecha interna o marca la escena como flashback, dream o vision.",
+            explanation: copy[language].characterAfterStatus(
+              character.name,
+              event.title,
+              character.status.toLowerCase(),
+              formatDate(character.statusDateInternal),
+            ),
+            suggestedFix: copy[language].characterAfterStatusFix,
           });
         }
       }
@@ -132,7 +226,10 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
           ?? getEventLocation(currentEvent, locationMap, "end");
         const locationSuffix =
           previousLocation && currentLocation && previousLocation.id !== currentLocation.id
-            ? ` Ocurre entre ${previousLocation.name} y ${currentLocation.name}.`
+            ? copy[language].overlappingEventsLocationSuffix(
+                previousLocation.name,
+                currentLocation.name,
+              )
             : "";
 
         results.push({
@@ -140,8 +237,13 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
           code: "CHARACTER_OVERLAPPING_EVENTS",
           characterId,
           eventIds: [previousEvent.id, currentEvent.id],
-          explanation: `${character.name} aparece en eventos traslapados: "${previousEvent.title}" y "${currentEvent.title}".${locationSuffix}`,
-          suggestedFix: "Ajusta ventanas temporales o separa la participacion del personaje entre escenas compatibles.",
+          explanation: copy[language].overlappingEvents(
+            character.name,
+            previousEvent.title,
+            currentEvent.title,
+            locationSuffix,
+          ),
+          suggestedFix: copy[language].overlappingEventsFix,
         });
       }
 
@@ -161,8 +263,13 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
           code: "CHARACTER_APPEARS_WITHOUT_TRAVEL",
           characterId,
           eventIds: [previousEvent.id, currentEvent.id],
-          explanation: `${character.name} cambia de ${previousLocation.name} a ${currentLocation.name} antes de "${currentEvent.title}" sin un evento de viaje intermedio.`,
-          suggestedFix: "Agrega un evento TRAVEL, ajusta locaciones o documenta el salto narrativo.",
+          explanation: copy[language].characterWithoutTravel(
+            character.name,
+            previousLocation.name,
+            currentLocation.name,
+            currentEvent.title,
+          ),
+          suggestedFix: copy[language].characterWithoutTravelFix,
         });
       }
     }

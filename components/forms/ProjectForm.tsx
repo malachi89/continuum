@@ -12,6 +12,7 @@ import {
   SubmitButton,
   useCrudForm,
 } from "@/components/forms/FormPrimitives";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type ProjectFormProps = {
   action: (state: CrudActionState, formData: FormData) => Promise<CrudActionState>;
@@ -25,6 +26,23 @@ type ProjectFormProps = {
   };
 };
 
+const copy = {
+  es: {
+    title: "Titulo",
+    titlePlaceholder: "Saga principal",
+    type: "Tipo",
+    description: "Descripcion",
+    descriptionPlaceholder: "Reglas base, tono, alcance editorial...",
+  },
+  en: {
+    title: "Title",
+    titlePlaceholder: "Main saga",
+    type: "Type",
+    description: "Description",
+    descriptionPlaceholder: "Base rules, tone, editorial scope...",
+  },
+} as const;
+
 export function ProjectForm({
   action,
   submitLabel,
@@ -32,6 +50,8 @@ export function ProjectForm({
   initialValues,
 }: ProjectFormProps) {
   const [state, formAction] = useCrudForm(action);
+  const { language } = useLanguage();
+  const text = copy[language];
 
   return (
     <form action={formAction} className="space-y-4">
@@ -40,16 +60,16 @@ export function ProjectForm({
       ) : null}
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
-      <Field label="Titulo">
+      <Field label={text.title}>
         <Input
           required
           name="title"
-          placeholder="Saga principal"
+          placeholder={text.titlePlaceholder}
           defaultValue={initialValues?.title ?? ""}
         />
       </Field>
 
-      <Field label="Tipo">
+      <Field label={text.type}>
         <Select name="type" defaultValue={initialValues?.type ?? "NOVEL"}>
           {projectTypeOptions.map((type) => (
             <option key={type} value={type}>
@@ -59,10 +79,10 @@ export function ProjectForm({
         </Select>
       </Field>
 
-      <Field label="Descripcion">
+      <Field label={text.description}>
         <Textarea
           name="description"
-          placeholder="Reglas base, tono, alcance editorial..."
+          placeholder={text.descriptionPlaceholder}
           defaultValue={initialValues?.description ?? ""}
         />
       </Field>

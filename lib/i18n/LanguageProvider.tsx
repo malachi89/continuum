@@ -10,11 +10,13 @@ import {
 import {
   defaultLanguage,
   dictionary,
+  isLanguage,
+  languageCookieName,
+  languageStorageKey,
   type Language,
   type TranslationKey,
 } from "@/lib/i18n/dictionary";
 
-const STORAGE_KEY = "continuity-language";
 const LANGUAGE_EVENT = "continuity-language-change";
 
 type LanguageContextValue = {
@@ -25,16 +27,30 @@ type LanguageContextValue = {
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
 
+function getCookieLanguage(): Language | null {
+  if (typeof document === "undefined") {
+    return null;
+  }
+
+  const match = document.cookie.match(
+    new RegExp(`(?:^|; )${languageCookieName}=([^;]+)`),
+  );
+  const value = match?.[1] ? decodeURIComponent(match[1]) : undefined;
+
+  return isLanguage(value) ? value : null;
+}
+
 function getStoredLanguage(): Language {
   if (typeof window === "undefined") {
     return defaultLanguage;
   }
 
-  const savedLanguage = window.localStorage.getItem(STORAGE_KEY);
+  const savedLanguage = window.localStorage.getItem(languageStorageKey);
+  const cookieLanguage = getCookieLanguage();
 
-  return savedLanguage === "es" || savedLanguage === "en"
+  return isLanguage(savedLanguage)
     ? savedLanguage
-    : defaultLanguage;
+    : cookieLanguage ?? defaultLanguage;
 }
 
 function subscribe(callback: () => void) {
@@ -53,15 +69,22 @@ function subscribe(callback: () => void) {
   };
 }
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
+export function LanguageProvider({
+  children,
+  initialLanguage = defaultLanguage,
+}: {
+  children: ReactNode;
+  initialLanguage?: Language;
+}) {
   const language = useSyncExternalStore(
     subscribe,
     getStoredLanguage,
-    () => defaultLanguage,
+    () => initialLanguage,
   );
 
   const setLanguage = (nextLanguage: Language) => {
-    window.localStorage.setItem(STORAGE_KEY, nextLanguage);
+    window.localStorage.setItem(languageStorageKey, nextLanguage);
+    document.cookie = `${languageCookieName}=${encodeURIComponent(nextLanguage)}; path=/; max-age=31536000; samesite=lax`;
     window.dispatchEvent(new Event(LANGUAGE_EVENT));
   };
 

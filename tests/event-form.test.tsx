@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import { EventCharacterSelector } from "@/components/forms/EventForm";
+import { LanguageProvider } from "@/lib/i18n/LanguageProvider";
 
 describe("EventCharacterSelector", () => {
   const characters = [
@@ -11,10 +12,12 @@ describe("EventCharacterSelector", () => {
 
   it("renders selected characters as hidden form fields", () => {
     const html = renderToStaticMarkup(
-      <EventCharacterSelector
-        characters={characters}
-        initialSelectedCharacterIds={["char-1", "char-3"]}
-      />,
+      <LanguageProvider initialLanguage="es">
+        <EventCharacterSelector
+          characters={characters}
+          initialSelectedCharacterIds={["char-1", "char-3"]}
+        />
+      </LanguageProvider>,
     );
 
     expect(html).toContain('name="characterIds"');
@@ -25,10 +28,12 @@ describe("EventCharacterSelector", () => {
 
   it("keeps unknown initial character ids out of the submitted fields", () => {
     const html = renderToStaticMarkup(
-      <EventCharacterSelector
-        characters={characters}
-        initialSelectedCharacterIds={["char-2", "missing-character"]}
-      />,
+      <LanguageProvider initialLanguage="es">
+        <EventCharacterSelector
+          characters={characters}
+          initialSelectedCharacterIds={["char-2", "missing-character"]}
+        />
+      </LanguageProvider>,
     );
 
     expect(html).toContain('value="char-2"');

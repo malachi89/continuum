@@ -25,6 +25,7 @@ import type { ContinuityResult } from "@/lib/continuity/types";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Select } from "@/components/ui/Select";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type TimelineBoardProps = {
   projectId: string;
@@ -51,23 +52,83 @@ const TRACK_VERTICAL_PADDING = 12;
 const TIMELINE_SCALE_STORAGE_KEY = "continuum.timelineScale";
 const TIMELINE_END_GAP = Math.max(...Object.values(TRACK_CARD_MIN_WIDTH_BY_SCALE)) + 24;
 
-const viewOptions: Array<{ value: TimelineBoardMode; label: string }> = [
-  { value: "character", label: "Personajes" },
-  { value: "location", label: "Lugares" },
-];
+const copy = {
+  es: {
+    characterView: "Personajes",
+    locationView: "Lugares",
+    viewLabel: "Vista",
+    orderLabel: "Orden",
+    zoomLabel: "Zoom",
+    characterFilter: "Personaje",
+    locationFilter: "Lugar",
+    chapterFilter: "Capitulo",
+    all: "Todos",
+    chronological: "Cronológico",
+    narrative: "Narrativo",
+    hours: "Horas",
+    days: "Días",
+    weeks: "Semanas",
+    eventsCount: "eventos",
+    rowsCount: "filas",
+    placesCount: "lugares",
+    zoomPrefix: "Zoom:",
+    noLocation: "Sin locacion",
+    noCharacters: "Sin personajes",
+    noEventsMatch: "Ningún evento coincide con los filtros actuales.",
+    noRowsMatch: "No hay filas con eventos para los filtros actuales.",
+    characterTrackHeader: "Personaje",
+    locationTrackHeader: "Lugar",
+    startLabel: "Inicio:",
+    endLabel: "Fin:",
+    removeCharacterLabel: (characterName: string, eventTitle: string) =>
+      `Quitar ${characterName} del evento ${eventTitle}`,
+    removingCharacter: "Quitando personaje del evento...",
+    characterRemoved: "Personaje quitado del evento.",
+    removeFailed: "No pudimos quitar el personaje del evento.",
+  },
+  en: {
+    characterView: "Characters",
+    locationView: "Locations",
+    viewLabel: "View",
+    orderLabel: "Sort",
+    zoomLabel: "Zoom",
+    characterFilter: "Character",
+    locationFilter: "Location",
+    chapterFilter: "Chapter",
+    all: "All",
+    chronological: "Chronological",
+    narrative: "Narrative",
+    hours: "Hours",
+    days: "Days",
+    weeks: "Weeks",
+    eventsCount: "events",
+    rowsCount: "rows",
+    placesCount: "places",
+    zoomPrefix: "Zoom:",
+    noLocation: "No location",
+    noCharacters: "No characters",
+    noEventsMatch: "No events match the current filters.",
+    noRowsMatch: "No rows have events for the current filters.",
+    characterTrackHeader: "Character",
+    locationTrackHeader: "Location",
+    startLabel: "Start:",
+    endLabel: "End:",
+    removeCharacterLabel: (characterName: string, eventTitle: string) =>
+      `Remove ${characterName} from event ${eventTitle}`,
+    removingCharacter: "Removing character from event...",
+    characterRemoved: "Character removed from the event.",
+    removeFailed: "We could not remove the character from the event.",
+  },
+} as const;
 
-const zoomOptions: Array<{ value: TimelineScale; label: string }> = [
-  { value: "hours", label: "Horas" },
-  { value: "days", label: "Días" },
-  { value: "weeks", label: "Semanas" },
-];
+type TimelineCopy = (typeof copy)[keyof typeof copy];
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
-function formatEventDate(value: string) {
-  return new Intl.DateTimeFormat("es-MX", {
+function formatEventDate(value: string, locale: string) {
+  return new Intl.DateTimeFormat(locale, {
     dateStyle: "medium",
     timeStyle: "short",
   }).format(new Date(value));
@@ -85,7 +146,7 @@ function getTrackHeight(laneCount: number) {
   );
 }
 
-function getLocationLabel(event: TimelineEventCard) {
+function getLocationLabel(event: TimelineEventCard, noLocationLabel: string) {
   if (
     event.startLocation &&
     event.endLocation &&
@@ -94,7 +155,7 @@ function getLocationLabel(event: TimelineEventCard) {
     return `${event.startLocation.name} -> ${event.endLocation.name}`;
   }
 
-  return event.startLocation?.name ?? event.endLocation?.name ?? "Sin locacion";
+  return event.startLocation?.name ?? event.endLocation?.name ?? noLocationLabel;
 }
 
 function getContinuityTone(results: ContinuityResult[]) {
@@ -115,12 +176,12 @@ function getContinuityLabel(results: ContinuityResult[]) {
     .join("\n");
 }
 
-function getViewHeader(mode: TimelineBoardMode) {
+function getViewHeader(mode: TimelineBoardMode, text: TimelineCopy) {
   if (mode === "location") {
-    return "Lugar";
+    return text.locationTrackHeader;
   }
 
-  return "Personaje";
+  return text.characterTrackHeader;
 }
 
 function getEventLocations(event: TimelineEventCard) {
@@ -204,6 +265,8 @@ function HistogramEventBlock({
   busyKey,
   continuityResults,
   cardMinWidth,
+  locale,
+  text,
 }: {
   item: TimelineHistogramItem;
   projectId: string;
@@ -211,6 +274,8 @@ function HistogramEventBlock({
   busyKey: string | null;
   continuityResults: ContinuityResult[];
   cardMinWidth: number;
+  locale: string;
+  text: TimelineCopy;
 }) {
   const event = item.event;
 
@@ -241,20 +306,22 @@ function HistogramEventBlock({
         >
           {event.title}
         </Link>
-        <p className="mt-1 truncate text-xs text-muted">{getLocationLabel(event)}</p>
+        <p className="mt-1 truncate text-xs text-muted">
+          {getLocationLabel(event, text.noLocation)}
+        </p>
         <p className="mt-1 text-[0.7rem] leading-4 text-muted">
           <span className="block truncate">
-            Inicio: {formatEventDate(event.internalStartIso)}
+            {text.startLabel} {formatEventDate(event.internalStartIso, locale)}
           </span>
           <span className="block truncate">
-            Fin: {formatEventDate(event.internalEndIso)}
+            {text.endLabel} {formatEventDate(event.internalEndIso, locale)}
           </span>
         </p>
       </div>
 
       <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden pb-1 pr-1">
         {event.characters.length === 0 ? (
-          <Badge>Sin personajes</Badge>
+          <Badge>{text.noCharacters}</Badge>
         ) : (
           event.characters.map((character) => {
             const removeKey = `${event.id}:${character.id}`;
@@ -280,7 +347,7 @@ function HistogramEventBlock({
                   onClick={() => onRemove(event.id, character.id)}
                   disabled={removing}
                   className="rounded-full px-1 text-muted transition hover:text-accent disabled:opacity-50"
-                  aria-label={`Quitar ${character.name} del evento ${event.title}`}
+                  aria-label={text.removeCharacterLabel(character.name, event.title)}
                 >
                   ×
                 </button>
@@ -300,6 +367,8 @@ export function TimelineBoard({
   continuityResults,
 }: TimelineBoardProps) {
   const router = useRouter();
+  const { language } = useLanguage();
+  const text = copy[language];
   const [boardMode, setBoardMode] = useState<TimelineBoardMode>("character");
   const [timelineScale, setTimelineScale] = useState<TimelineScale>(getInitialTimelineScale);
   const [sortMode, setSortMode] = useState<SortMode>("chronological");
@@ -388,9 +457,15 @@ export function TimelineBoard({
   const minimumLaneDurationMs = timelineRange
     ? getMinimumLaneDurationMs(timelineRange, timelineWidth, trackCardMinWidth)
     : 0;
-  const axisTicks = timelineRange ? buildTimelineAxisTicks(timelineRange, timelineScale) : [];
+  const axisTicks = timelineRange
+    ? buildTimelineAxisTicks(timelineRange, timelineScale, language)
+    : [];
   const activeZoomLabel =
-    zoomOptions.find((option) => option.value === timelineScale)?.label ?? "Horas";
+    timelineScale === "hours"
+      ? text.hours
+      : timelineScale === "days"
+        ? text.days
+        : text.weeks;
   const histogramTracks = useMemo(() => {
     if (!timelineRange) {
       return [];
@@ -402,12 +477,14 @@ export function TimelineBoard({
       events: filteredEvents,
       range: timelineRange,
       minimumLaneDurationMs,
+      language,
     }).filter((track) => track.events.length > 0 || characterFilter !== "all");
   }, [
     boardMode,
     characterFilter,
     filteredCharacters,
     filteredEvents,
+    language,
     minimumLaneDurationMs,
     timelineRange,
   ]);
@@ -417,7 +494,7 @@ export function TimelineBoard({
     const previousEvents = timelineEvents;
 
     setBusyKey(key);
-    setFeedback({ tone: "info", message: "Quitando personaje del evento..." });
+    setFeedback({ tone: "info", message: text.removingCharacter });
     setTimelineEvents((currentEvents) =>
       currentEvents.map((event) =>
         event.id === eventId
@@ -433,13 +510,13 @@ export function TimelineBoard({
     startTransition(async () => {
       try {
         await removeCharacterFromEventAction({ projectId, eventId, characterId });
-        setFeedback({ tone: "success", message: "Personaje quitado del evento." });
+        setFeedback({ tone: "success", message: text.characterRemoved });
         router.refresh();
       } catch (error) {
         setTimelineEvents(previousEvents);
         setFeedback({
           tone: "error",
-          message: getErrorMessage(error, "No pudimos quitar el personaje del evento."),
+          message: getErrorMessage(error, text.removeFailed),
         });
       } finally {
         setBusyKey(null);
@@ -475,10 +552,13 @@ export function TimelineBoard({
         <div className="flex flex-wrap items-end gap-3">
           <div className="min-w-56">
             <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Vista
+              {text.viewLabel}
             </p>
             <div className="flex flex-wrap gap-2">
-              {viewOptions.map((option) => (
+              {[
+                { value: "character" as const, label: text.characterView },
+                { value: "location" as const, label: text.locationView },
+              ].map((option) => (
                 <Button
                   key={option.value}
                   type="button"
@@ -493,7 +573,7 @@ export function TimelineBoard({
 
           <div className="min-w-44">
             <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Orden
+              {text.orderLabel}
             </p>
             <div className="flex gap-2">
               <Button
@@ -501,24 +581,28 @@ export function TimelineBoard({
                 variant={sortMode === "chronological" ? "primary" : "secondary"}
                 onClick={() => setSortMode("chronological")}
               >
-                Cronológico
+                {text.chronological}
               </Button>
               <Button
                 type="button"
                 variant={sortMode === "narrative" ? "primary" : "secondary"}
                 onClick={() => setSortMode("narrative")}
               >
-                Narrativo
+                {text.narrative}
               </Button>
             </div>
           </div>
 
           <div className="min-w-44">
             <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Zoom
+              {text.zoomLabel}
             </p>
             <div className="flex flex-wrap gap-2">
-              {zoomOptions.map((option) => (
+              {[
+                { value: "hours" as const, label: text.hours },
+                { value: "days" as const, label: text.days },
+                { value: "weeks" as const, label: text.weeks },
+              ].map((option) => (
                 <Button
                   key={option.value}
                   type="button"
@@ -533,13 +617,13 @@ export function TimelineBoard({
 
           <label className="min-w-40">
             <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Personaje
+              {text.characterFilter}
             </span>
             <Select
               value={characterFilter}
               onChange={(event) => setCharacterFilter(event.target.value)}
             >
-              <option value="all">Todos</option>
+              <option value="all">{text.all}</option>
               {characters.map((character) => (
                 <option key={character.id} value={character.id}>
                   {character.name}
@@ -550,13 +634,13 @@ export function TimelineBoard({
 
           <label className="min-w-40">
             <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Lugar
+              {text.locationFilter}
             </span>
             <Select
               value={locationFilter}
               onChange={(event) => setLocationFilter(event.target.value)}
             >
-              <option value="all">Todos</option>
+              <option value="all">{text.all}</option>
               {locationOptions.map((location) => (
                 <option key={location.id} value={location.id}>
                   {location.name}
@@ -567,13 +651,13 @@ export function TimelineBoard({
 
           <label className="min-w-40">
             <span className="mb-2 block text-xs font-medium uppercase tracking-[0.2em] text-muted">
-              Capitulo
+              {text.chapterFilter}
             </span>
             <Select
               value={chapterFilter}
               onChange={(event) => setChapterFilter(event.target.value)}
             >
-              <option value="all">Todos</option>
+              <option value="all">{text.all}</option>
               {chapterOptions.map((chapter) => (
                 <option key={chapter} value={chapter}>
                   {chapter}
@@ -583,10 +667,18 @@ export function TimelineBoard({
           </label>
 
           <div className="ml-auto flex flex-wrap gap-2">
-            <Badge tone="accent">{filteredEvents.length} eventos</Badge>
-            <Badge>{histogramTracks.length} filas</Badge>
-            <Badge tone="success">{locationOptions.length} lugares</Badge>
-            <Badge>Zoom: {activeZoomLabel}</Badge>
+            <Badge tone="accent">
+              {filteredEvents.length} {text.eventsCount}
+            </Badge>
+            <Badge>
+              {histogramTracks.length} {text.rowsCount}
+            </Badge>
+            <Badge tone="success">
+              {locationOptions.length} {text.placesCount}
+            </Badge>
+            <Badge>
+              {text.zoomPrefix} {activeZoomLabel}
+            </Badge>
           </div>
         </div>
       </section>
@@ -594,11 +686,11 @@ export function TimelineBoard({
       <section className="min-w-0">
         {filteredEvents.length === 0 || !timelineRange ? (
           <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
-            Ningún evento coincide con los filtros actuales.
+            {text.noEventsMatch}
           </div>
         ) : histogramTracks.length === 0 ? (
           <div className="rounded-[28px] border border-dashed border-line bg-surface p-6 text-sm text-muted">
-            No hay filas con eventos para los filtros actuales.
+            {text.noRowsMatch}
           </div>
         ) : (
           <div className="overflow-auto rounded-[28px] border border-line bg-surface">
@@ -611,7 +703,7 @@ export function TimelineBoard({
               >
                 <div className="sticky left-0 z-20 border-b border-r border-line bg-surface p-4">
                   <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                    {getViewHeader(boardMode)}
+                    {getViewHeader(boardMode, text)}
                   </p>
                 </div>
                 <div className="flex h-16 border-b border-line bg-canvas/60">
@@ -656,7 +748,7 @@ export function TimelineBoard({
                               {track.label}
                             </p>
                             <p className="truncate text-xs text-muted">
-                              {track.meta ?? `${track.events.length} eventos`}
+                              {track.meta ?? `${track.events.length} ${text.eventsCount}`}
                             </p>
                           </div>
                         </div>
@@ -680,6 +772,8 @@ export function TimelineBoard({
                               busyKey={busyKey}
                               continuityResults={continuityResultsByEvent.get(item.event.id) ?? []}
                               cardMinWidth={trackCardMinWidth}
+                              locale={language === "es" ? "es-MX" : "en-US"}
+                              text={text}
                             />
                           ))}
                         </div>

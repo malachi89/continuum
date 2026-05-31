@@ -1,6 +1,12 @@
 export type Language = "es" | "en";
 
 export const defaultLanguage: Language = "es";
+export const languageCookieName = "continuity-language";
+export const languageStorageKey = "continuity-language";
+
+export function isLanguage(value: string | undefined | null): value is Language {
+  return value === "es" || value === "en";
+}
 
 export const dictionary = {
   es: {
@@ -14,6 +20,7 @@ export const dictionary = {
     comingSoon: "Proxima fase",
     comingSoonBody:
       "Aqui dejaremos el espacio para la funcionalidad real cuando avancemos a los modulos CRUD y de analisis.",
+    importing: "Importando...",
     events: "Eventos",
     eventsDescription: "Ordena escenas, hechos canon y dependencias narrativas.",
     exportImport: "Exportar / importar",
@@ -31,7 +38,9 @@ export const dictionary = {
     modules: "Modulos",
     openMenu: "Abrir menu",
     openProjects: "Abrir proyectos",
+    overview: "Resumen",
     pleaseWait: "Espera un momento...",
+    saving: "Guardando...",
     projects: "Proyectos",
     projectsDescription: "Configura universos, series o clientes con sus reglas base.",
     shellCardBody:
@@ -59,6 +68,7 @@ export const dictionary = {
     comingSoon: "Next phase",
     comingSoonBody:
       "This area is reserved for the real module behavior once we move into CRUD and analysis work.",
+    importing: "Importing...",
     events: "Events",
     eventsDescription: "Sort scenes, canon facts, and narrative dependencies.",
     exportImport: "Export / import",
@@ -76,7 +86,9 @@ export const dictionary = {
     modules: "Modules",
     openMenu: "Open menu",
     openProjects: "Open projects",
+    overview: "Overview",
     pleaseWait: "Please wait...",
+    saving: "Saving...",
     projects: "Projects",
     projectsDescription: "Configure universes, series, or clients with base rules.",
     shellCardBody:

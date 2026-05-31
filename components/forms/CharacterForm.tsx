@@ -12,6 +12,7 @@ import {
   SubmitButton,
   useCrudForm,
 } from "@/components/forms/FormPrimitives";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 type CharacterFormProps = {
   action: (state: CrudActionState, formData: FormData) => Promise<CrudActionState>;
@@ -22,6 +23,27 @@ type CharacterFormProps = {
     status?: CharacterStatus;
   };
 };
+
+const copy = {
+  es: {
+    name: "Nombre",
+    alias: "Alias",
+    description: "Descripcion",
+    notes: "Notas",
+    color: "Color",
+    status: "Estado",
+    statusDate: "Fecha interna del estado",
+  },
+  en: {
+    name: "Name",
+    alias: "Alias",
+    description: "Description",
+    notes: "Notes",
+    color: "Color",
+    status: "Status",
+    statusDate: "Status internal date",
+  },
+} as const;
 
 function toDateTimeLocal(value?: Date | string | null) {
   if (!value) {
@@ -42,6 +64,8 @@ export function CharacterForm({
   initialValues,
 }: CharacterFormProps) {
   const [state, formAction] = useCrudForm(action);
+  const { language } = useLanguage();
+  const text = copy[language];
 
   return (
     <form action={formAction} className="space-y-4">
@@ -50,24 +74,24 @@ export function CharacterForm({
       <input type="hidden" name="redirectTo" value={redirectTo} />
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Nombre">
+        <Field label={text.name}>
           <Input required name="name" defaultValue={initialValues?.name ?? ""} />
         </Field>
-        <Field label="Alias">
+        <Field label={text.alias}>
           <Input name="alias" defaultValue={initialValues?.alias ?? ""} />
         </Field>
       </div>
 
-      <Field label="Descripcion">
+      <Field label={text.description}>
         <Textarea name="description" defaultValue={initialValues?.description ?? ""} />
       </Field>
 
-      <Field label="Notas">
+      <Field label={text.notes}>
         <Textarea name="notes" defaultValue={initialValues?.notes ?? ""} />
       </Field>
 
       <div className="grid gap-4 md:grid-cols-2">
-        <Field label="Color">
+        <Field label={text.color}>
           <Input
             required
             type="color"
@@ -76,7 +100,7 @@ export function CharacterForm({
             defaultValue={initialValues?.color ?? "#b6542b"}
           />
         </Field>
-        <Field label="Estado">
+        <Field label={text.status}>
           <Select name="status" defaultValue={initialValues?.status ?? "UNKNOWN"}>
             {characterStatusOptions.map((status) => (
               <option key={status} value={status}>
@@ -87,7 +111,7 @@ export function CharacterForm({
         </Field>
       </div>
 
-      <Field label="Fecha interna del estado">
+      <Field label={text.statusDate}>
         <Input
           name="statusDateInternal"
           type="datetime-local"

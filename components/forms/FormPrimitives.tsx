@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { useFormStatus } from "react-dom";
 import type { CrudActionState } from "@/app/(app)/projects/actions";
 import { Button } from "@/components/ui/Button";
+import { useLanguage } from "@/lib/i18n/LanguageProvider";
 
 export const initialCrudState: CrudActionState = {};
 
@@ -45,16 +46,17 @@ export function FormError({ error }: { error?: string }) {
 
 export function SubmitButton({
   children,
-  pendingLabel = "Guardando...",
+  pendingLabel,
 }: {
   children: React.ReactNode;
   pendingLabel?: string;
 }) {
   const { pending } = useFormStatus();
+  const { t } = useLanguage();
 
   return (
     <Button type="submit" disabled={pending}>
-      {pending ? pendingLabel : children}
+      {pending ? pendingLabel ?? t("saving") : children}
     </Button>
   );
 }
