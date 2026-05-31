@@ -843,6 +843,9 @@ async function main() {
       `- ${project.title} [${project.type}] — ${project._count.characters} personajes, ${project._count.locations} locaciones, ${project._count.events} eventos`,
     );
   }
+
+  console.log("\nTodo listo — inicia sesión como admin / admin");
+  console.log("Si prefieres usar correo, también funciona admin@continuity.local / admin");
 }
 
 main()

@@ -46,6 +46,21 @@ npx prisma generate
 npx prisma db seed
 ```
 
+## Demo para admin
+
+Para cargar dos proyectos de muestra en la cuenta `admin`:
+
+```powershell
+npm run seed:admin-showcase
+```
+
+Eso crea o refresca estos proyectos:
+
+- `Guardia de Fin de Semana`
+- `La Caravana de las Ratas de Andrómeda`
+
+La cuenta queda lista para entrar como `admin` / `admin` o `admin@continuity.local` / `admin`.
+
 ## Correr la app
 
 ```powershell
