@@ -9,6 +9,7 @@ import { removeCharacterFromEventAction } from "@/app/(app)/projects/actions";
 import type {
   TimelineBoardMode,
   TimelineScale,
+  TimelineRange,
   TimelineCharacterOption,
   TimelineEventCard,
   TimelineHistogramItem,
@@ -39,11 +40,16 @@ type Feedback = {
 };
 
 const TRACK_LABEL_WIDTH = 220;
-const TRACK_CARD_HEIGHT = 152;
+const TRACK_CARD_HEIGHT = 168;
+const TRACK_CARD_MIN_WIDTH_BY_SCALE: Record<TimelineScale, number> = {
+  hours: 256,
+  days: 256,
+  weeks: 208,
+};
 const TRACK_LANE_GAP = 12;
 const TRACK_VERTICAL_PADDING = 12;
 const TIMELINE_SCALE_STORAGE_KEY = "continuum.timelineScale";
-const TIMELINE_END_GAP = 64;
+const TIMELINE_END_GAP = Math.max(...Object.values(TRACK_CARD_MIN_WIDTH_BY_SCALE)) + 24;
 
 const viewOptions: Array<{ value: TimelineBoardMode; label: string }> = [
   { value: "character", label: "Personajes" },
@@ -123,6 +129,22 @@ function getEventLocations(event: TimelineEventCard) {
   );
 }
 
+function getTrackCardMinWidth(scale: TimelineScale) {
+  return TRACK_CARD_MIN_WIDTH_BY_SCALE[scale];
+}
+
+function getMinimumLaneDurationMs(
+  range: TimelineRange,
+  width: number,
+  cardMinWidth: number,
+) {
+  if (width <= 0) {
+    return 0;
+  }
+
+  return ((cardMinWidth + TRACK_LANE_GAP) / width) * range.durationMs;
+}
+
 function getInitialTimelineScale(): TimelineScale {
   if (typeof window === "undefined") {
     return "hours";
@@ -181,12 +203,14 @@ function HistogramEventBlock({
   onRemove,
   busyKey,
   continuityResults,
+  cardMinWidth,
 }: {
   item: TimelineHistogramItem;
   projectId: string;
   onRemove: (eventId: string, characterId: string) => void;
   busyKey: string | null;
   continuityResults: ContinuityResult[];
+  cardMinWidth: number;
 }) {
   const event = item.event;
 
@@ -197,7 +221,7 @@ function HistogramEventBlock({
         top: `${getTrackLaneTop(item.laneIndex)}px`,
         width: `${item.widthPercent}%`,
         height: `${TRACK_CARD_HEIGHT}px`,
-        minWidth: "13rem",
+        minWidth: `${cardMinWidth}px`,
       }}
       className="absolute overflow-visible rounded-[18px] border border-line bg-surface p-3 pr-9 text-left shadow-sm"
     >
@@ -218,13 +242,17 @@ function HistogramEventBlock({
           {event.title}
         </Link>
         <p className="mt-1 truncate text-xs text-muted">{getLocationLabel(event)}</p>
-        <p className="mt-1 truncate text-[0.7rem] text-muted">
-          {formatEventDate(event.internalStartIso)} {"->"}{" "}
-          {formatEventDate(event.internalEndIso)}
+        <p className="mt-1 text-[0.7rem] leading-4 text-muted">
+          <span className="block truncate">
+            Inicio: {formatEventDate(event.internalStartIso)}
+          </span>
+          <span className="block truncate">
+            Fin: {formatEventDate(event.internalEndIso)}
+          </span>
         </p>
       </div>
 
-      <div className="mt-3 flex flex-wrap gap-1.5">
+      <div className="mt-3 flex flex-nowrap gap-1.5 overflow-x-auto overflow-y-hidden pb-1 pr-1">
         {event.characters.length === 0 ? (
           <Badge>Sin personajes</Badge>
         ) : (
@@ -235,7 +263,7 @@ function HistogramEventBlock({
             return (
               <div
                 key={character.id}
-                className="inline-flex min-w-0 items-center gap-1.5 rounded-full border border-line bg-canvas/80 px-2 py-1 text-[0.7rem]"
+                className="inline-flex min-w-0 shrink-0 items-center gap-1.5 rounded-full border border-line bg-canvas/80 px-2 py-1 text-[0.7rem]"
               >
                 <span
                   className="h-2 w-2 shrink-0 rounded-full"
@@ -356,6 +384,10 @@ export function TimelineBoard({
   );
   const timelineWidth = timelineRange ? getTimelineWidth(timelineRange, timelineScale) : 0;
   const timelineCanvasWidth = timelineWidth + TIMELINE_END_GAP;
+  const trackCardMinWidth = getTrackCardMinWidth(timelineScale);
+  const minimumLaneDurationMs = timelineRange
+    ? getMinimumLaneDurationMs(timelineRange, timelineWidth, trackCardMinWidth)
+    : 0;
   const axisTicks = timelineRange ? buildTimelineAxisTicks(timelineRange, timelineScale) : [];
   const activeZoomLabel =
     zoomOptions.find((option) => option.value === timelineScale)?.label ?? "Horas";
@@ -369,8 +401,16 @@ export function TimelineBoard({
       characters: filteredCharacters,
       events: filteredEvents,
       range: timelineRange,
+      minimumLaneDurationMs,
     }).filter((track) => track.events.length > 0 || characterFilter !== "all");
-  }, [boardMode, characterFilter, filteredCharacters, filteredEvents, timelineRange]);
+  }, [
+    boardMode,
+    characterFilter,
+    filteredCharacters,
+    filteredEvents,
+    minimumLaneDurationMs,
+    timelineRange,
+  ]);
 
   function handleRemove(eventId: string, characterId: string) {
     const key = `${eventId}:${characterId}`;
@@ -639,6 +679,7 @@ export function TimelineBoard({
                               onRemove={handleRemove}
                               busyKey={busyKey}
                               continuityResults={continuityResultsByEvent.get(item.event.id) ?? []}
+                              cardMinWidth={trackCardMinWidth}
                             />
                           ))}
                         </div>

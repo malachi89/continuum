@@ -302,7 +302,11 @@ export function getTimelineEventPosition(
   };
 }
 
-function assignEventLanes(events: TimelineEventCard[], range: TimelineRange) {
+function assignEventLanes(
+  events: TimelineEventCard[],
+  range: TimelineRange,
+  minimumLaneDurationMs = 0,
+) {
   const laneEndTimes: number[] = [];
 
   return [...events]
@@ -311,8 +315,10 @@ function assignEventLanes(events: TimelineEventCard[], range: TimelineRange) {
       const position = getTimelineEventPosition(event, range);
       const laneIndex = laneEndTimes.findIndex((endMs) => endMs <= position.startMs);
       const assignedLaneIndex = laneIndex >= 0 ? laneIndex : laneEndTimes.length;
-      const occupiedUntilMs =
+      const chronologicalEndMs =
         position.endMs === position.startMs ? position.endMs + 1 : position.endMs;
+      const visualEndMs = position.startMs + minimumLaneDurationMs;
+      const occupiedUntilMs = Math.max(chronologicalEndMs, visualEndMs);
 
       laneEndTimes[assignedLaneIndex] = occupiedUntilMs;
 
@@ -327,10 +333,15 @@ function assignEventLanes(events: TimelineEventCard[], range: TimelineRange) {
 function createTrack(
   input: Omit<TimelineHistogramTrack, "laneCount" | "events"> & {
     events: TimelineEventCard[];
+    minimumLaneDurationMs?: number;
   },
   range: TimelineRange,
 ): TimelineHistogramTrack {
-  const trackEvents = assignEventLanes(input.events, range);
+  const trackEvents = assignEventLanes(
+    input.events,
+    range,
+    input.minimumLaneDurationMs,
+  );
 
   return {
     id: input.id,
@@ -356,6 +367,7 @@ function buildCharacterTracks(
   characters: TimelineCharacterOption[],
   events: TimelineEventCard[],
   range: TimelineRange,
+  minimumLaneDurationMs = 0,
 ) {
   const tracks: TimelineHistogramTrack[] = characters.map((character) =>
     createTrack(
@@ -366,6 +378,7 @@ function buildCharacterTracks(
         meta: character.alias ?? character.status,
         color: character.color,
         events: events.filter((event) => event.characterIds.includes(character.id)),
+        minimumLaneDurationMs,
       },
       range,
     ),
@@ -383,6 +396,7 @@ function buildCharacterTracks(
           meta: null,
           color: "#6a6257",
           events: unassignedEvents,
+          minimumLaneDurationMs,
         },
         range,
       ),
@@ -392,7 +406,11 @@ function buildCharacterTracks(
   return tracks;
 }
 
-function buildLocationTracks(events: TimelineEventCard[], range: TimelineRange) {
+function buildLocationTracks(
+  events: TimelineEventCard[],
+  range: TimelineRange,
+  minimumLaneDurationMs = 0,
+) {
   const locationsById = new Map<string, { id: string; name: string }>();
 
   for (const event of events) {
@@ -416,6 +434,7 @@ function buildLocationTracks(events: TimelineEventCard[], range: TimelineRange) 
               (eventLocation) => eventLocation.id === location.id,
             ),
           ),
+          minimumLaneDurationMs,
         },
         range,
       ),
@@ -435,6 +454,7 @@ function buildLocationTracks(events: TimelineEventCard[], range: TimelineRange) 
           meta: null,
           color: "#6a6257",
           events: eventsWithoutLocations,
+          minimumLaneDurationMs,
         },
         range,
       ),
@@ -450,13 +470,23 @@ export function buildTimelineHistogramTracks(
     characters: TimelineCharacterOption[];
     events: TimelineEventCard[];
     range: TimelineRange;
+    minimumLaneDurationMs?: number;
   },
 ): TimelineHistogramTrack[] {
   if (input.mode === "location") {
-    return buildLocationTracks(input.events, input.range);
+    return buildLocationTracks(
+      input.events,
+      input.range,
+      input.minimumLaneDurationMs,
+    );
   }
 
-  return buildCharacterTracks(input.characters, input.events, input.range);
+  return buildCharacterTracks(
+    input.characters,
+    input.events,
+    input.range,
+    input.minimumLaneDurationMs,
+  );
 }
 
 export function indexContinuityResultsByEvent(results: ContinuityResult[]) {

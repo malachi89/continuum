@@ -32,17 +32,22 @@ export default async function ProjectEventsPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-line bg-surface p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-          Nuevo evento
-        </p>
-        <h3 className="mt-3 text-2xl font-semibold">
-          Eventos de {project.title}
-        </h3>
-        <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
-          Puedes guardar eventos aunque el fin sea anterior al inicio. Ese caso se
-          detectara despues en el analizador de continuidad.
-        </p>
+      <details className="rounded-[28px] border border-line bg-surface p-6">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+              Nuevo evento
+            </p>
+            <h3 className="mt-3 text-2xl font-semibold">Eventos de {project.title}</h3>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-muted">
+              Puedes guardar eventos aunque el fin sea anterior al inicio. Ese caso se detectara
+              despues en el analizador de continuidad.
+            </p>
+          </div>
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-canvas/70 text-2xl leading-none text-ink transition">
+            +
+          </span>
+        </summary>
         <div className="mt-5">
           <EventForm
             action={createEventAction}
@@ -53,7 +58,7 @@ export default async function ProjectEventsPage({
             characters={characters}
           />
         </div>
-      </section>
+      </details>
 
       {events.length === 0 ? (
         <EmptyState

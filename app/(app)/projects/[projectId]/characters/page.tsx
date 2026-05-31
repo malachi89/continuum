@@ -19,11 +19,18 @@ export default async function ProjectCharactersPage({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[28px] border border-line bg-surface p-6">
-        <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-          Nuevo personaje
-        </p>
-        <h3 className="mt-3 text-2xl font-semibold">Reparto de {project.title}</h3>
+      <details className="rounded-[28px] border border-line bg-surface p-6">
+        <summary className="flex cursor-pointer list-none items-start justify-between gap-4">
+          <div>
+            <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+              Nuevo personaje
+            </p>
+            <h3 className="mt-3 text-2xl font-semibold">Reparto de {project.title}</h3>
+          </div>
+          <span className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-line bg-canvas/70 text-2xl leading-none text-ink transition">
+            +
+          </span>
+        </summary>
         <div className="mt-5">
           <CharacterForm
             action={createCharacterAction}
@@ -32,7 +39,7 @@ export default async function ProjectCharactersPage({
             redirectTo={redirectTo}
           />
         </div>
-      </section>
+      </details>
 
       {characters.length === 0 ? (
         <EmptyState

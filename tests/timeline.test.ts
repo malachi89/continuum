@@ -239,6 +239,31 @@ describe("timeline helpers", () => {
     expect(track?.laneCount).toBe(2);
   });
 
+  it("stacks visually close events when cards need a minimum rendered width", () => {
+    const nextEvent = {
+      ...eventA,
+      id: "event-next",
+      title: "Bruno poco despues",
+      internalStart: new Date("2026-01-01T15:00:00.000Z"),
+      internalEnd: new Date("2026-01-01T15:00:00.000Z"),
+    };
+    const cards = buildTimelineEventCards([eventA, nextEvent]);
+    const range = buildTimelineRange(cards);
+
+    expect(range).not.toBeNull();
+
+    const [track] = buildTimelineHistogramTracks({
+      mode: "character",
+      characters: [bruno],
+      events: cards,
+      range: range!,
+      minimumLaneDurationMs: 2 * 60 * 60 * 1000,
+    });
+
+    expect(track?.events.map((event) => event.laneIndex)).toEqual([0, 1]);
+    expect(track?.laneCount).toBe(2);
+  });
+
   it("allows simultaneous events on different character tracks", () => {
     const cards = buildTimelineEventCards([eventA, eventC]);
     const range = buildTimelineRange(cards);
