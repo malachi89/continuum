@@ -12,7 +12,7 @@ type AuthFormProps = {
     formData: FormData,
   ) => Promise<AuthActionState>;
   title: string;
-  description: string;
+  description?: string;
   submitLabel: string;
   footerText: string;
   footerLinkLabel: string;
@@ -44,7 +44,9 @@ export function AuthForm({
     <div className="w-full max-w-md rounded-[32px] border border-line bg-surface/95 p-8 shadow-[0_22px_70px_rgba(91,71,36,0.12)]">
       <BrandLogo variant="compact" />
       <h1 className="mt-3 text-3xl font-semibold tracking-tight">{title}</h1>
-      <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
+      {description ? (
+        <p className="mt-3 text-sm leading-6 text-muted">{description}</p>
+      ) : null}
 
       <form action={formAction} className="mt-8 space-y-4">
         {fields.map((field) => (

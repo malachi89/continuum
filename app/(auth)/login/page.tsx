@@ -7,7 +7,6 @@ import { getServerLanguage } from "@/lib/i18n/server";
 const copy = {
   es: {
     title: "Iniciar sesión",
-    description: "Accede con tu cuenta local para continuar en tu espacio de continuidad.",
     submit: "Entrar",
     footerText: "¿Necesitas una cuenta?",
     footerLinkLabel: "Registrarte",
@@ -16,7 +15,6 @@ const copy = {
   },
   en: {
     title: "Log in",
-    description: "Sign in with your local account to continue in your continuity workspace.",
     submit: "Enter",
     footerText: "Need an account?",
     footerLinkLabel: "Create one",
@@ -38,7 +36,6 @@ export default async function LoginPage() {
     <AuthForm
       action={loginAction}
       title={text.title}
-      description={text.description}
       submitLabel={text.submit}
       footerText={text.footerText}
       footerLinkLabel={text.footerLinkLabel}
