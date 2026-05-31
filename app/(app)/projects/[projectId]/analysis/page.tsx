@@ -143,7 +143,7 @@ export default async function ProjectAnalysisPage({
               const character = result.characterId ? characterMap.get(result.characterId) : null;
 
               return (
-                <tr key={`${result.code}-${result.eventIds.join("-")}`} className={index !== filteredResults.length - 1 ? "border-b border-line/50" : undefined}>
+                <tr key={`${result.code}-${result.characterId ?? "global"}-${result.eventIds.join("-")}`} className={index !== filteredResults.length - 1 ? "border-b border-line/50" : undefined}>
                   <td className="px-5 py-4">
                     <Badge
                       tone={

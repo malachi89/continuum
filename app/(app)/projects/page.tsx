@@ -15,7 +15,7 @@ const copy = {
     newProject: "Nuevo proyecto",
     newProjectTitle: "Arrancar un nuevo canon",
     createProject: "Crear proyecto",
-    emptyEyebrow: "P01",
+    emptyEyebrow: "",
     emptyTitle: "Todavia no hay proyectos",
     emptyBody:
       "Crea el primero para empezar a cargar personajes, locaciones y eventos con control por usuario.",
@@ -33,7 +33,7 @@ const copy = {
     newProject: "New project",
     newProjectTitle: "Launch a new canon",
     createProject: "Create project",
-    emptyEyebrow: "P01",
+    emptyEyebrow: "",
     emptyTitle: "There are no projects yet",
     emptyBody:
       "Create the first one to start adding characters, locations, and events with per-user ownership.",

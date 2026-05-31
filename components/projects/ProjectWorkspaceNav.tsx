@@ -35,9 +35,6 @@ export function ProjectWorkspaceNav({
             )}
           >
             <span>{t(item.labelKey)}</span>
-            <span className="font-mono text-[11px] uppercase tracking-[0.25em] opacity-75">
-              {item.shortLabel}
-            </span>
           </Link>
         );
       })}

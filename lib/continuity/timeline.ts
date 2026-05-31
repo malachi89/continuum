@@ -126,7 +126,7 @@ const TIMELINE_SCALE_CONFIG: Record<
   weeks: {
     unitMs: 7 * 24 * 60 * 60 * 1000,
     pxPerUnit: 220,
-    minWidth: 240,
+    minWidth: 440,
   },
 };
 

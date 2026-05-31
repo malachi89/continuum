@@ -101,9 +101,6 @@ export function AppShell({
                   onClick={() => setIsNavOpen(false)}
                 >
                   <span className="font-medium">{t(item.labelKey)}</span>
-                  <span className="font-mono text-xs uppercase tracking-[0.2em] opacity-70">
-                    {item.shortLabel}
-                  </span>
                 </Link>
               );
             })}

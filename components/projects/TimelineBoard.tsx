@@ -3,7 +3,7 @@
 import clsx from "clsx";
 import { AlertTriangle, CircleAlert } from "lucide-react";
 import Link from "next/link";
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { removeCharacterFromEventAction } from "@/app/(app)/projects/actions";
 import type {
@@ -203,7 +203,9 @@ function getMinimumLaneDurationMs(
     return 0;
   }
 
-  return ((cardMinWidth + TRACK_LANE_GAP) / width) * range.durationMs;
+  const raw = ((cardMinWidth + TRACK_LANE_GAP) / width) * range.durationMs;
+
+  return Math.min(raw, range.durationMs * 0.35);
 }
 
 function getInitialTimelineScale(): TimelineScale {
@@ -247,7 +249,7 @@ function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
       <div className="pointer-events-none absolute right-0 top-7 hidden w-72 rounded-[14px] border border-line bg-surface p-3 text-left text-xs leading-5 text-ink shadow-[0_18px_50px_rgba(91,71,36,0.18)] group-hover:block group-focus:block">
         {results.slice(0, 3).map((result, index) => (
           <p
-            key={`${result.code}-${result.eventIds.join("-")}`}
+            key={`${result.code}-${result.characterId ?? "global"}-${result.eventIds.join("-")}`}
             className={index > 0 ? "mt-2" : undefined}
           >
             <span className="font-semibold">{result.severity}</span> {result.explanation}
@@ -369,6 +371,7 @@ export function TimelineBoard({
   const router = useRouter();
   const { language } = useLanguage();
   const text = copy[language];
+  const timelineRef = useRef<HTMLDivElement>(null);
   const [boardMode, setBoardMode] = useState<TimelineBoardMode>("character");
   const [timelineScale, setTimelineScale] = useState<TimelineScale>(getInitialTimelineScale);
   const [sortMode, setSortMode] = useState<SortMode>("chronological");
@@ -488,6 +491,13 @@ export function TimelineBoard({
     minimumLaneDurationMs,
     timelineRange,
   ]);
+
+  useEffect(() => {
+    if (timelineRef.current) {
+      timelineRef.current.scrollLeft = 0;
+      timelineRef.current.scrollTop = 0;
+    }
+  }, [timelineScale]);
 
   function handleRemove(eventId: string, characterId: string) {
     const key = `${eventId}:${characterId}`;
@@ -693,7 +703,7 @@ export function TimelineBoard({
             {text.noRowsMatch}
           </div>
         ) : (
-          <div className="overflow-auto rounded-[28px] border border-line bg-surface">
+          <div ref={timelineRef} className="overflow-auto rounded-[28px] border border-line bg-surface">
             <div style={{ minWidth: TRACK_LABEL_WIDTH + timelineCanvasWidth }}>
               <div
                 className="grid"

@@ -56,9 +56,6 @@ export function HomePage() {
               href={item.href}
               className="rounded-[24px] border border-line bg-canvas/70 p-5 transition hover:-translate-y-0.5 hover:border-accent hover:bg-surface"
             >
-              <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
-                {item.shortLabel}
-              </p>
               <h4 className="mt-3 text-lg font-semibold">{t(item.labelKey)}</h4>
               <p className="mt-2 text-sm leading-6 text-muted">
                 {t(item.descriptionKey)}

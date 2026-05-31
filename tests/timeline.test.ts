@@ -173,7 +173,7 @@ describe("timeline helpers", () => {
     const weeksWidth = getTimelineWidth(range!, "weeks");
 
     expect(hoursWidth).toBeGreaterThan(daysWidth);
-    expect(daysWidth).toBeGreaterThan(weeksWidth);
+    expect(weeksWidth).toBeGreaterThan(daysWidth);
   });
 
   it("builds day ticks across whole-day intervals", () => {
