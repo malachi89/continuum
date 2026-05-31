@@ -2,7 +2,6 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
 import {
-  clearSessionCookie,
   getSessionTokenHash,
   SESSION_COOKIE_NAME,
 } from "@/lib/auth/session";
@@ -46,7 +45,6 @@ async function getCurrentUserImpl(): Promise<CurrentUser | null> {
   });
 
   if (!session || session.expiresAt <= new Date()) {
-    await clearSessionCookie();
     return null;
   }
 
