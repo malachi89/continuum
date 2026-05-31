@@ -14,8 +14,6 @@ export const continuityImportSchema = z.object({
       description: z.string().nullable().optional(),
       notes: z.string().nullable().optional(),
       color: z.string().min(1),
-      maxTravelMode: z.string().nullable().optional(),
-      maxSpeedKmh: z.number().nullable().optional(),
       status: z.string().min(1),
       statusDateInternal: z.string().nullable().optional(),
     }),

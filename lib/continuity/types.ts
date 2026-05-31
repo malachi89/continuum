@@ -19,8 +19,6 @@ export type AnalyzableCharacter = {
   name: string;
   alias: string | null;
   color: string;
-  maxTravelMode: string | null;
-  maxSpeedKmh: number | null;
   status: string;
   statusDateInternal: string | null;
 };

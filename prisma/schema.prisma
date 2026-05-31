@@ -14,14 +14,6 @@ enum ProjectType {
   OTHER
 }
 
-enum TravelMode {
-  WALKING
-  CAR
-  PLANE
-  MAGIC_PORTAL
-  OTHER
-}
-
 enum CharacterStatus {
   ALIVE
   DEAD
@@ -94,8 +86,6 @@ model Character {
   description        String?
   notes              String?
   color              String
-  maxTravelMode      TravelMode?
-  maxSpeedKmh        Float?
   status             CharacterStatus  @default(UNKNOWN)
   statusDateInternal DateTime?
   project            Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)

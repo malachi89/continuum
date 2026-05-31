@@ -20,8 +20,6 @@ export default async function ProjectTimelinePage({
       name: character.name,
       alias: character.alias,
       color: character.color,
-      maxTravelMode: character.maxTravelMode,
-      maxSpeedKmh: character.maxSpeedKmh,
       status: character.status,
       statusDateInternal: character.statusDateInternal?.toISOString() ?? null,
     })),

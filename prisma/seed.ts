@@ -7,7 +7,6 @@ import {
   LocationType,
   PrismaClient,
   ProjectType,
-  TravelMode,
 } from "@prisma/client";
 
 const adapter = new PrismaBetterSqlite3({
@@ -108,8 +107,6 @@ async function main() {
       projectId: project.id,
       name: "Bruno",
       color: "#E85D04",
-      maxTravelMode: TravelMode.CAR,
-      maxSpeedKmh: 80,
       status: CharacterStatus.UNKNOWN,
       description: "Personaje demo para pruebas de continuidad.",
     },

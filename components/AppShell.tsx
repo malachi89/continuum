@@ -17,7 +17,6 @@ const projectScopedRoutes = new Map<string, string>([
   ["/events", "/events"],
   ["/timeline", "/timeline"],
   ["/analysis", "/analysis"],
-  ["/data-transfer", "/import-export"],
 ]);
 
 function getActiveProjectId(pathname: string) {

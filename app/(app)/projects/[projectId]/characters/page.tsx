@@ -66,8 +66,6 @@ export default async function ProjectCharactersPage({
                   <th className="py-3 pr-4 font-medium">Personaje</th>
                   <th className="px-4 py-3 font-medium">Alias</th>
                   <th className="px-4 py-3 font-medium">Estado</th>
-                  <th className="px-4 py-3 font-medium">Movilidad</th>
-                  <th className="px-4 py-3 font-medium">Velocidad</th>
                   <th className="py-3 pl-4 text-right font-medium">Accion</th>
                 </tr>
               </thead>
@@ -86,18 +84,6 @@ export default async function ProjectCharactersPage({
                     <td className="px-4 py-4 text-muted">{character.alias ?? "Sin alias"}</td>
                     <td className="px-4 py-4">
                       <Badge>{character.status}</Badge>
-                    </td>
-                    <td className="px-4 py-4">
-                      {character.maxTravelMode ? (
-                        <Badge tone="accent">{character.maxTravelMode}</Badge>
-                      ) : (
-                        <span className="text-muted">Sin definir</span>
-                      )}
-                    </td>
-                    <td className="px-4 py-4 text-muted">
-                      {character.maxSpeedKmh !== null
-                        ? `${character.maxSpeedKmh} km/h`
-                        : "Sin definir"}
                     </td>
                     <td className="py-4 pl-4 text-right">
                       <Link

@@ -18,8 +18,6 @@ describe("timeline helpers", () => {
     description: null,
     notes: null,
     color: "#E85D04",
-    maxTravelMode: "CAR",
-    maxSpeedKmh: 80,
     status: "UNKNOWN",
     statusDateInternal: null,
   };

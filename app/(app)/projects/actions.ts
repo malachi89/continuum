@@ -6,7 +6,6 @@ import {
   LocationType,
   Prisma,
   ProjectType,
-  TravelMode,
 } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
@@ -80,11 +79,6 @@ const characterSchema = z.object({
     .string()
     .trim()
     .regex(/^#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/, "Usa un color hexadecimal valido."),
-  maxTravelMode: z.preprocess(
-    (value) => (value === "" ? undefined : value),
-    z.nativeEnum(TravelMode).optional(),
-  ),
-  maxSpeedKmh: optionalNumber,
   status: z.nativeEnum(CharacterStatus, {
     error: "Selecciona un estado valido.",
   }),
@@ -325,8 +319,6 @@ export async function createCharacterAction(
     description: formData.get("description"),
     notes: formData.get("notes"),
     color: formData.get("color"),
-    maxTravelMode: formData.get("maxTravelMode"),
-    maxSpeedKmh: formData.get("maxSpeedKmh"),
     status: formData.get("status"),
     statusDateInternal: formData.get("statusDateInternal"),
   });
@@ -348,8 +340,6 @@ export async function createCharacterAction(
         description: parsed.data.description,
         notes: parsed.data.notes,
         color: parsed.data.color,
-        maxTravelMode: parsed.data.maxTravelMode,
-        maxSpeedKmh: parsed.data.maxSpeedKmh,
         status: parsed.data.status,
         statusDateInternal: parsed.data.statusDateInternal
           ? parseDateString(parsed.data.statusDateInternal, "La fecha de estado")
@@ -379,8 +369,6 @@ export async function updateCharacterAction(
     description: formData.get("description"),
     notes: formData.get("notes"),
     color: formData.get("color"),
-    maxTravelMode: formData.get("maxTravelMode"),
-    maxSpeedKmh: formData.get("maxSpeedKmh"),
     status: formData.get("status"),
     statusDateInternal: formData.get("statusDateInternal"),
   });
@@ -411,8 +399,6 @@ export async function updateCharacterAction(
         description: parsed.data.description,
         notes: parsed.data.notes,
         color: parsed.data.color,
-        maxTravelMode: parsed.data.maxTravelMode,
-        maxSpeedKmh: parsed.data.maxSpeedKmh,
         status: parsed.data.status,
         statusDateInternal: parsed.data.statusDateInternal
           ? parseDateString(parsed.data.statusDateInternal, "La fecha de estado")
@@ -962,18 +948,16 @@ export async function importProjectJsonAction(
 
       for (const character of bundle.characters) {
         const created = await tx.character.create({
-          data: {
-            projectId: project.id,
-            name: character.name,
-            alias: character.alias ?? null,
-            description: character.description ?? null,
-            notes: character.notes ?? null,
-            color: character.color,
-            maxTravelMode: (character.maxTravelMode as TravelMode | null) ?? null,
-            maxSpeedKmh: character.maxSpeedKmh ?? null,
-            status: character.status as CharacterStatus,
-            statusDateInternal: character.statusDateInternal
-              ? new Date(character.statusDateInternal)
+        data: {
+          projectId: project.id,
+          name: character.name,
+          alias: character.alias ?? null,
+          description: character.description ?? null,
+          notes: character.notes ?? null,
+          color: character.color,
+          status: character.status as CharacterStatus,
+          statusDateInternal: character.statusDateInternal
+            ? new Date(character.statusDateInternal)
               : null,
           },
           select: { id: true },

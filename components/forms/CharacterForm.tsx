@@ -1,11 +1,8 @@
 "use client";
 
-import type { Character, CharacterStatus, TravelMode } from "@prisma/client";
+import type { Character, CharacterStatus } from "@prisma/client";
 import type { CrudActionState } from "@/app/(app)/projects/actions";
-import {
-  characterStatusOptions,
-  travelModeOptions,
-} from "@/lib/continuity/constants";
+import { characterStatusOptions } from "@/lib/continuity/constants";
 import { Input } from "@/components/ui/Input";
 import { Select } from "@/components/ui/Select";
 import { Textarea } from "@/components/ui/Textarea";
@@ -23,7 +20,6 @@ type CharacterFormProps = {
   redirectTo: string;
   initialValues?: Partial<Character> & {
     status?: CharacterStatus;
-    maxTravelMode?: TravelMode | null;
   };
 };
 
@@ -70,7 +66,7 @@ export function CharacterForm({
         <Textarea name="notes" defaultValue={initialValues?.notes ?? ""} />
       </Field>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2">
         <Field label="Color">
           <Input
             required
@@ -78,25 +74,6 @@ export function CharacterForm({
             name="color"
             className="h-12 px-2"
             defaultValue={initialValues?.color ?? "#b6542b"}
-          />
-        </Field>
-        <Field label="Modo maximo">
-          <Select name="maxTravelMode" defaultValue={initialValues?.maxTravelMode ?? ""}>
-            <option value="">Sin definir</option>
-            {travelModeOptions.map((mode) => (
-              <option key={mode} value={mode}>
-                {mode}
-              </option>
-            ))}
-          </Select>
-        </Field>
-        <Field label="Velocidad max. km/h">
-          <Input
-            name="maxSpeedKmh"
-            type="number"
-            min="0"
-            step="0.1"
-            defaultValue={initialValues?.maxSpeedKmh ?? ""}
           />
         </Field>
         <Field label="Estado">

@@ -13,8 +13,6 @@ function createBaseProject(): AnalyzableProject {
         name: "Bruno",
         alias: null,
         color: "#E85D04",
-        maxTravelMode: "CAR",
-        maxSpeedKmh: 80,
         status: "UNKNOWN",
         statusDateInternal: null,
       },
@@ -67,14 +65,10 @@ function createBaseProject(): AnalyzableProject {
 }
 
 describe("continuity analysis", () => {
-  it("flags impossible travel in the demo project", () => {
+  it("no longer flags impossible travel from character metadata", () => {
     const results = analyzeProjectContinuity(createBaseProject());
-    const impossibleTravel = results.find((result) => result.code === "IMPOSSIBLE_TRAVEL");
 
-    expect(impossibleTravel).toBeDefined();
-    expect(impossibleTravel?.severity).toBe("ERROR");
-    expect(impossibleTravel?.explanation).toContain("distancia aproximada");
-    expect(impossibleTravel?.explanation).toContain("requeriria");
+    expect(results.some((result) => result.code === "IMPOSSIBLE_TRAVEL")).toBe(false);
   });
 
   it("detects overlapping events for the same character", () => {

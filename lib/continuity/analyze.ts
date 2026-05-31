@@ -1,4 +1,3 @@
-import { haversineKm } from "@/lib/continuity/distance";
 import type {
   AnalyzableCharacter,
   AnalyzableEvent,
@@ -11,18 +10,6 @@ const NON_LITERAL_RETURN_EVENT_TYPES = new Set(["FLASHBACK", "DREAM", "VISION"])
 
 function formatDate(value: string) {
   return new Date(value).toISOString();
-}
-
-function formatDistance(value: number) {
-  return `${Math.round(value)} km`;
-}
-
-function formatDurationHours(value: number) {
-  if (value < 1) {
-    return `${Math.round(value * 60)} min`;
-  }
-
-  return `${value.toFixed(2)} h`;
 }
 
 function getLocationMap(locations: AnalyzableLocation[]) {
@@ -177,48 +164,6 @@ export function analyzeProjectContinuity(project: AnalyzableProject): Continuity
           explanation: `${character.name} cambia de ${previousLocation.name} a ${currentLocation.name} antes de "${currentEvent.title}" sin un evento de viaje intermedio.`,
           suggestedFix: "Agrega un evento TRAVEL, ajusta locaciones o documenta el salto narrativo.",
         });
-      }
-
-      if (
-        character.maxTravelMode !== "MAGIC_PORTAL" &&
-        previousLocation &&
-        currentLocation &&
-        previousLocation.latitude !== null &&
-        previousLocation.longitude !== null &&
-        currentLocation.latitude !== null &&
-        currentLocation.longitude !== null
-      ) {
-        const distanceKm = haversineKm(
-          {
-            latitude: previousLocation.latitude,
-            longitude: previousLocation.longitude,
-          },
-          {
-            latitude: currentLocation.latitude,
-            longitude: currentLocation.longitude,
-          },
-        );
-        const availableHours = (currentStart - previousEnd) / 3_600_000;
-        const requiredSpeedKmh =
-          availableHours > 0 ? distanceKm / availableHours : Number.POSITIVE_INFINITY;
-
-        if (
-          character.maxSpeedKmh !== null &&
-          requiredSpeedKmh > character.maxSpeedKmh
-        ) {
-          results.push({
-            severity: "ERROR",
-            code: "IMPOSSIBLE_TRAVEL",
-            characterId,
-            eventIds: [previousEvent.id, currentEvent.id],
-            explanation: `${character.name} pasa de ${previousLocation.name} a ${currentLocation.name} en ${formatDurationHours(
-              Math.max(availableHours, 0),
-            )}. La distancia aproximada es ${formatDistance(distanceKm)} y requeriria ${Math.round(
-              requiredSpeedKmh,
-            )} km/h.`,
-            suggestedFix: "Amplia el tiempo disponible, cambia la locacion, incrementa la capacidad de viaje o usa MAGIC_PORTAL si forma parte del canon.",
-          });
-        }
       }
     }
   }

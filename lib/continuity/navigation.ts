@@ -44,10 +44,4 @@ export const navigationItems: NavigationItem[] = [
     descriptionKey: "analysisDescription",
     shortLabel: "A06",
   },
-  {
-    href: "/data-transfer",
-    labelKey: "exportImport",
-    descriptionKey: "exportImportDescription",
-    shortLabel: "X07",
-  },
 ];

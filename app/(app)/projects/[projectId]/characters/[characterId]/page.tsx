@@ -57,10 +57,6 @@ export default async function CharacterTrackingPage({
           </div>
           <div className="flex flex-wrap gap-2">
             <Badge>{character.status}</Badge>
-            {character.maxTravelMode ? <Badge tone="accent">{character.maxTravelMode}</Badge> : null}
-            {character.maxSpeedKmh !== null ? (
-              <Badge tone="success">{character.maxSpeedKmh} km/h</Badge>
-            ) : null}
           </div>
         </div>
 
