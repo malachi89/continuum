@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { createEventAction } from "@/app/(app)/projects/actions";
 import { EventForm } from "@/components/forms/EventForm";
+import { CharacterPopover } from "@/components/projects/CharacterPopover";
 import { Badge } from "@/components/ui/Badge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import {
@@ -168,9 +169,15 @@ export default async function ProjectEventsPage({
                       </div>
                     </td>
                     <td className="px-4 py-4 text-muted">
-                      {event.characters.length > 0
-                        ? `${event.characters.length} ${text.linked}`
-                        : text.noCharacters}
+                      {event.characters.length > 0 ? (
+                        <CharacterPopover
+                          label={`${event.characters.length} ${text.linked}`}
+                          characters={event.characters}
+                          projectId={projectId}
+                        />
+                      ) : (
+                        text.noCharacters
+                      )}
                     </td>
                     <td className="py-4 pl-4 text-right">
                       <Link
