@@ -14,6 +14,8 @@ Continuum is a Next.js MVP for narrative continuity tracking. It supports privat
 - Vitest
 - Zod
 - `@dnd-kit/core`
+- `lucide-react`
+- `bcryptjs`
 
 ## Common Commands
 
@@ -22,6 +24,7 @@ npm run dev
 npm run lint
 npm test
 npm run build
+npm run seed:admin-showcase
 ```
 
 Use `npm run lint`, `npm test`, and `npm run build` before handing off meaningful code changes.
@@ -48,11 +51,18 @@ continuity123
 ## Code Map
 
 - `app/(app)/projects/actions.ts`: server actions for CRUD, timeline assignment, import/export.
-- `components/projects/TimelineBoard.tsx`: timeline UI, filters, drag and drop character assignment.
+- `app/(auth)/actions.ts`: auth server actions (register, login, logout).
+- `components/AppShell.tsx`: main app layout with sidebar navigation.
 - `components/forms/`: project, character, location, event, import, and delete forms.
-- `lib/continuity/`: data access, timeline helpers, analysis engine, import/export, constants, navigation.
-- `lib/i18n/`: language provider and dictionary.
+- `components/projects/TimelineBoard.tsx`: timeline UI, filters, drag and drop character assignment.
+- `components/projects/ProjectRoutePicker.tsx`: grid of project cards linking to sections.
+- `components/projects/ProjectWorkspaceNav.tsx`: sub-navigation within a project.
+- `components/ui/`: reusable primitives (Button, Input, Select, Textarea, Badge, EmptyState).
+- `lib/auth/`: password hashing, session management, current user helpers.
+- `lib/continuity/`: data access, timeline helpers, analysis engine, import/export, constants, distance, types, navigation.
+- `lib/i18n/`: language provider, dictionary (es/en), server-side language detection.
 - `prisma/schema.prisma`: core project, character, location, event, and event-character models.
+- `prisma/seed-admin-showcase.ts`: advanced seed with 2 demo projects and intentional collisions.
 - `tests/`: Vitest coverage for continuity helpers, auth, dictionary, analysis, and distance logic.
 
 ## Working Rules
