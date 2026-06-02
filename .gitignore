@@ -13,6 +13,9 @@ prisma/dev.db-journal
 
 # Logs
 server-run.*.log
+server-dev*.log
+server-dev*.err.log
+server-dev*.out.log
 next-dev*.log
 npm-dev*.log
 npm-start*.log
