@@ -72,4 +72,5 @@ continuity123
 - Keep project ownership checks on all server-side data mutations.
 - For event-character assignment, preserve the existing behavior: drag characters onto existing events; do not create events from drag and drop.
 - Keep continuity analysis logic pure where possible and cover behavior with Vitest.
+- `CHARACTER_APPEARS_WITHOUT_TRAVEL` uses a 1-day (24h) threshold: if the gap between `previousEvent.internalEnd` and `currentEvent.internalStart` is >= 24 hours, the warning is suppressed (enough time for offscreen travel). Below 24h, a TRAVEL event is expected.
 - Do not commit generated logs such as `next-dev*.log`, `npm-dev*.log`, `npm-start*.log`, or `server-run*.log`.

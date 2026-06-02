@@ -252,11 +252,14 @@ export function analyzeProjectContinuity(
       const currentLocation = getEventLocation(currentEvent, locationMap, "start")
         ?? getEventLocation(currentEvent, locationMap, "end");
 
+      const ONE_DAY_MS = 86_400_000;
+
       if (
         previousLocation &&
         currentLocation &&
         previousLocation.id !== currentLocation.id &&
-        currentEvent.eventType !== "TRAVEL"
+        currentEvent.eventType !== "TRAVEL" &&
+        currentStart - previousEnd < ONE_DAY_MS
       ) {
         results.push({
           severity: "WARNING",
