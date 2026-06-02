@@ -1,9 +1,9 @@
 "use client";
 
 import clsx from "clsx";
-import { AlertTriangle, CircleAlert } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CircleAlert } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type {
   TimelineBoardMode,
   TimelineScale,
@@ -310,6 +310,8 @@ function HistogramEventBlock({
   cardMinWidth,
   locale,
   text,
+  zIndex,
+  onBringToFront,
 }: {
   item: TimelineHistogramItem;
   projectId: string;
@@ -317,19 +319,23 @@ function HistogramEventBlock({
   cardMinWidth: number;
   locale: string;
   text: TimelineCopy;
+  zIndex: number;
+  onBringToFront: (eventId: string) => void;
 }) {
   const event = item.event;
 
   return (
     <article
+      onClick={() => onBringToFront(event.id)}
       style={{
         left: `${item.offsetPercent}%`,
         top: `${getTrackLaneTop(item.laneIndex)}px`,
         width: `${item.widthPercent}%`,
         height: `${TRACK_CARD_HEIGHT}px`,
         minWidth: `${cardMinWidth}px`,
+        zIndex,
       }}
-      className="absolute overflow-visible rounded-[18px] border border-line bg-surface p-3 pr-9 text-left shadow-sm"
+      className="absolute cursor-pointer overflow-visible rounded-[18px] border border-line bg-surface p-3 pr-9 text-left shadow-sm transition-shadow hover:shadow-md"
     >
       <ContinuityMarker results={continuityResults} />
 
@@ -341,12 +347,9 @@ function HistogramEventBlock({
             <Badge tone="success">#{event.narrativeOrder}</Badge>
           ) : null}
         </div>
-        <Link
-          href={`/projects/${projectId}/events/${event.id}`}
-          className="mt-2 block truncate text-sm font-semibold text-ink hover:text-accent"
-        >
+        <span className="mt-2 block truncate text-sm font-semibold text-ink">
           {event.title}
-        </Link>
+        </span>
         <p className="mt-1 truncate text-xs text-muted">
           {getLocationLabel(event, text.noLocation)}
         </p>
@@ -363,6 +366,15 @@ function HistogramEventBlock({
       <div className="mt-3 flex flex-nowrap gap-1.5 overflow-visible pb-1 pr-1">
         <CharacterRosterButton event={event} projectId={projectId} text={text} />
       </div>
+
+      <Link
+        href={`/projects/${projectId}/events/${event.id}`}
+        className="absolute bottom-2 right-2 z-10 flex h-7 w-7 items-center justify-center rounded-full border border-line bg-surface text-muted transition hover:border-accent hover:text-accent"
+        onClick={(e) => e.stopPropagation()}
+        aria-label={`View ${event.title}`}
+      >
+        <ArrowUpRight className="h-3.5 w-3.5" />
+      </Link>
     </article>
   );
 }
@@ -382,7 +394,19 @@ export function TimelineBoard({
   const [characterFilter, setCharacterFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [chapterFilter, setChapterFilter] = useState("all");
+  const [eventZIndices, setEventZIndices] = useState<Map<string, number>>(new Map());
+  const zCounterRef = useRef(10);
   const timelineEvents = events;
+
+  const handleBringToFront = useCallback((eventId: string) => {
+    zCounterRef.current += 1;
+    const newZIndex = zCounterRef.current;
+    setEventZIndices((prev) => {
+      const next = new Map(prev);
+      next.set(eventId, newZIndex);
+      return next;
+    });
+  }, []);
 
   const chapterOptions = useMemo(() => {
     const chapters = new Set(
@@ -731,6 +755,8 @@ export function TimelineBoard({
                               cardMinWidth={trackCardMinWidth}
                               locale={language === "es" ? "es-MX" : "en-US"}
                               text={text}
+                              zIndex={eventZIndices.get(item.event.id) ?? 0}
+                              onBringToFront={handleBringToFront}
                             />
                           ))}
                         </div>
