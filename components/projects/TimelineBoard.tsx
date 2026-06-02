@@ -11,11 +11,13 @@ import type {
   TimelineCharacterOption,
   TimelineEventCard,
   TimelineHistogramItem,
+  TimelineGapBreak,
 } from "@/lib/continuity/timeline";
 import {
   buildTimelineAxisTicks,
   buildTimelineHistogramTracks,
   buildTimelineRange,
+  collapseTimelineGaps,
   indexContinuityResultsByEvent,
   getTimelineWidth,
 } from "@/lib/continuity/timeline";
@@ -40,10 +42,14 @@ const TRACK_CARD_MIN_WIDTH_BY_SCALE: Record<TimelineScale, number> = {
   hours: 256,
   days: 256,
   weeks: 208,
+  months: 192,
+  years: 176,
+  millenia: 160,
 };
 const TRACK_LANE_GAP = 12;
 const TRACK_VERTICAL_PADDING = 12;
 const TIMELINE_SCALE_STORAGE_KEY = "continuum.timelineScale";
+const TIMELINE_GAP_TRIMMING_KEY = "continuum.gapTrimming";
 const TIMELINE_END_GAP = Math.max(...Object.values(TRACK_CARD_MIN_WIDTH_BY_SCALE)) + 24;
 
 const copy = {
@@ -62,6 +68,11 @@ const copy = {
     hours: "Horas",
     days: "Días",
     weeks: "Semanas",
+    months: "Meses",
+    years: "Años",
+    millenia: "Milenios",
+    trimGaps: "Recortar",
+    trimGapsOn: "Expandir",
     eventsCount: "eventos",
     rowsCount: "filas",
     placesCount: "lugares",
@@ -97,6 +108,11 @@ const copy = {
     hours: "Hours",
     days: "Days",
     weeks: "Weeks",
+    months: "Months",
+    years: "Years",
+    millenia: "Millennia",
+    trimGaps: "Trim gaps",
+    trimGapsOn: "Expand",
     eventsCount: "events",
     rowsCount: "rows",
     placesCount: "places",
@@ -202,6 +218,8 @@ function getMinimumLaneDurationMs(
   return Math.min(raw, range.durationMs * 0.35);
 }
 
+const VALID_SCALES: TimelineScale[] = ["hours", "days", "weeks", "months", "years", "millenia"];
+
 function getInitialTimelineScale(): TimelineScale {
   if (typeof window === "undefined") {
     return "hours";
@@ -209,11 +227,25 @@ function getInitialTimelineScale(): TimelineScale {
 
   const storedScale = window.localStorage.getItem(TIMELINE_SCALE_STORAGE_KEY);
 
-  if (storedScale === "hours" || storedScale === "days" || storedScale === "weeks") {
-    return storedScale;
+  if (VALID_SCALES.includes(storedScale as TimelineScale)) {
+    return storedScale as TimelineScale;
   }
 
   return "hours";
+}
+
+function getInitialGapTrimming(): boolean {
+  if (typeof window === "undefined") {
+    return true;
+  }
+
+  const stored = window.localStorage.getItem(TIMELINE_GAP_TRIMMING_KEY);
+
+  if (stored === null) {
+    return true;
+  }
+
+  return stored === "true";
 }
 
 function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
@@ -394,6 +426,7 @@ export function TimelineBoard({
   const [characterFilter, setCharacterFilter] = useState("all");
   const [locationFilter, setLocationFilter] = useState("all");
   const [chapterFilter, setChapterFilter] = useState("all");
+  const [gapTrimming, setGapTrimming] = useState(getInitialGapTrimming);
   const [eventZIndices, setEventZIndices] = useState<Map<string, number>>(new Map());
   const zCounterRef = useRef(10);
   const timelineEvents = events;
@@ -474,7 +507,18 @@ export function TimelineBoard({
     [characterFilter, characters],
   );
 
-  const timelineRange = useMemo(() => buildTimelineRange(filteredEvents), [filteredEvents]);
+  const gapCollapse = useMemo(
+    () =>
+      gapTrimming && filteredEvents.length >= 2
+        ? collapseTimelineGaps(filteredEvents, timelineScale)
+        : null,
+    [gapTrimming, filteredEvents, timelineScale],
+  );
+
+  const displayEvents = gapCollapse?.compressedEvents ?? filteredEvents;
+  const gapBreaks: TimelineGapBreak[] = gapCollapse?.gapBreaks ?? [];
+
+  const timelineRange = useMemo(() => buildTimelineRange(displayEvents), [displayEvents]);
   const continuityResultsByEvent = useMemo(
     () => indexContinuityResultsByEvent(continuityResults),
     [continuityResults],
@@ -488,12 +532,15 @@ export function TimelineBoard({
   const axisTicks = timelineRange
     ? buildTimelineAxisTicks(timelineRange, timelineScale, language)
     : [];
-  const activeZoomLabel =
-    timelineScale === "hours"
-      ? text.hours
-      : timelineScale === "days"
-        ? text.days
-        : text.weeks;
+  const zoomLabelMap: Record<TimelineScale, string> = {
+    hours: text.hours,
+    days: text.days,
+    weeks: text.weeks,
+    months: text.months,
+    years: text.years,
+    millenia: text.millenia,
+  };
+  const activeZoomLabel = zoomLabelMap[timelineScale];
   const histogramTracks = useMemo(() => {
     if (!timelineRange) {
       return [];
@@ -502,7 +549,7 @@ export function TimelineBoard({
     return buildTimelineHistogramTracks({
       mode: boardMode,
       characters: filteredCharacters,
-      events: filteredEvents,
+      events: displayEvents,
       range: timelineRange,
       minimumLaneDurationMs,
       language,
@@ -511,7 +558,7 @@ export function TimelineBoard({
     boardMode,
     characterFilter,
     filteredCharacters,
-    filteredEvents,
+    displayEvents,
     language,
     minimumLaneDurationMs,
     timelineRange,
@@ -527,6 +574,14 @@ export function TimelineBoard({
   function handleTimelineScaleChange(nextScale: TimelineScale) {
     setTimelineScale(nextScale);
     window.localStorage.setItem(TIMELINE_SCALE_STORAGE_KEY, nextScale);
+  }
+
+  function handleGapTrimmingToggle() {
+    setGapTrimming((prev) => {
+      const next = !prev;
+      window.localStorage.setItem(TIMELINE_GAP_TRIMMING_KEY, String(next));
+      return next;
+    });
   }
 
   return (
@@ -576,26 +631,33 @@ export function TimelineBoard({
             </div>
           </div>
 
-          <div className="min-w-44">
+          <div className="min-w-36">
             <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
               {text.zoomLabel}
             </p>
-            <div className="flex flex-wrap gap-2">
-              {[
-                { value: "hours" as const, label: text.hours },
-                { value: "days" as const, label: text.days },
-                { value: "weeks" as const, label: text.weeks },
-              ].map((option) => (
-                <Button
-                  key={option.value}
-                  type="button"
-                  variant={timelineScale === option.value ? "primary" : "secondary"}
-                  onClick={() => handleTimelineScaleChange(option.value)}
-                >
-                  {option.label}
-                </Button>
+            <Select
+              value={timelineScale}
+              onChange={(e) => handleTimelineScaleChange(e.target.value as TimelineScale)}
+            >
+              {VALID_SCALES.map((scale) => (
+                <option key={scale} value={scale}>
+                  {zoomLabelMap[scale]}
+                </option>
               ))}
-            </div>
+            </Select>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-medium uppercase tracking-[0.2em] text-muted">
+              &nbsp;
+            </p>
+            <Button
+              type="button"
+              variant={gapTrimming ? "primary" : "secondary"}
+              onClick={handleGapTrimmingToggle}
+            >
+              {gapTrimming ? text.trimGapsOn : text.trimGaps}
+            </Button>
           </div>
 
           <label className="min-w-40">
@@ -702,6 +764,21 @@ export function TimelineBoard({
                         </span>
                       </div>
                     ))}
+                    {gapBreaks.map((gap, index) => {
+                      const midPercent = (gap.startPercent + gap.endPercent) / 2;
+                      return (
+                        <div
+                          key={`gap-${index}`}
+                          className="absolute top-0 flex h-full flex-col items-center justify-center"
+                          style={{ left: `${midPercent}%`, transform: "translateX(-50%)" }}
+                        >
+                          <div className="h-full w-px border-l border-dashed border-red-300" />
+                          <span className="absolute bottom-1 whitespace-nowrap rounded-full border border-red-200 bg-red-50 px-2 py-0.5 text-[0.6rem] font-medium text-red-600">
+                            ↕ {gap.label} ↕
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                   <div aria-hidden="true" className="shrink-0" style={{ width: TIMELINE_END_GAP }} />
                 </div>
@@ -746,6 +823,16 @@ export function TimelineBoard({
                               style={{ left: `${tick.leftPercent}%` }}
                             />
                           ))}
+                          {gapBreaks.map((gap, index) => {
+                            const midPercent = (gap.startPercent + gap.endPercent) / 2;
+                            return (
+                              <div
+                                key={`${track.id}-gap-${index}`}
+                                className="absolute top-0 h-full w-px border-l border-dashed border-red-200"
+                                style={{ left: `${midPercent}%` }}
+                              />
+                            );
+                          })}
                           {track.events.map((item) => (
                             <HistogramEventBlock
                               key={`${track.kind}-${track.id}-${item.event.id}-${item.laneIndex}`}

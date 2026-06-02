@@ -69,7 +69,14 @@ export type TimelineRange = {
   durationMs: number;
 };
 
-export type TimelineScale = "hours" | "days" | "weeks";
+export type TimelineGapBreak = {
+  startPercent: number;
+  endPercent: number;
+  gapMs: number;
+  label: string;
+};
+
+export type TimelineScale = "hours" | "days" | "weeks" | "months" | "years" | "millenia";
 
 export type TimelineAxisTick = {
   id: string;
@@ -127,6 +134,21 @@ const TIMELINE_SCALE_CONFIG: Record<
     unitMs: 7 * 24 * 60 * 60 * 1000,
     pxPerUnit: 220,
     minWidth: 440,
+  },
+  months: {
+    unitMs: 30.44 * 24 * 60 * 60 * 1000,
+    pxPerUnit: 200,
+    minWidth: 400,
+  },
+  years: {
+    unitMs: 365.25 * 24 * 60 * 60 * 1000,
+    pxPerUnit: 220,
+    minWidth: 440,
+  },
+  millenia: {
+    unitMs: 1000 * 365.25 * 24 * 60 * 60 * 1000,
+    pxPerUnit: 240,
+    minWidth: 480,
   },
 };
 
@@ -210,6 +232,24 @@ function formatTimelineHourLabel(value: number, language: Language) {
   }).format(new Date(value));
 }
 
+function formatTimelineMonthLabel(value: number, language: Language) {
+  return new Intl.DateTimeFormat(language === "es" ? "es-MX" : "en-US", {
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatTimelineYearLabel(value: number) {
+  return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+function formatTimelineMilleniumLabel(value: number) {
+  const year = new Date(value).getFullYear();
+  return `${Math.floor(year / 1000) * 1000}`;
+}
+
 function formatTimelineTickLabel(value: number, scale: TimelineScale, language: Language) {
   if (scale === "hours") {
     return formatTimelineHourLabel(value, language);
@@ -217,6 +257,18 @@ function formatTimelineTickLabel(value: number, scale: TimelineScale, language: 
 
   if (scale === "weeks") {
     return `${copy[language].weekLabel} ${formatTimelineDateLabel(value, language)}`;
+  }
+
+  if (scale === "months") {
+    return formatTimelineMonthLabel(value, language);
+  }
+
+  if (scale === "years") {
+    return formatTimelineYearLabel(value);
+  }
+
+  if (scale === "millenia") {
+    return formatTimelineMilleniumLabel(value);
   }
 
   return formatTimelineDateLabel(value, language);
@@ -242,13 +294,31 @@ function formatGapLabel(minutes: number) {
   }
 
   const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
+  const remainingDaysHours = hours % 24;
 
-  if (remainingHours > 0) {
-    return `${days} d ${remainingHours} h`;
+  if (days < 30) {
+    return remainingDaysHours > 0
+      ? `${days} d ${remainingDaysHours} h`
+      : `${days} d`;
   }
 
-  return `${days} d`;
+  const months = Math.floor(days / 30.44);
+  const remainingDays = Math.floor(days % 30.44);
+
+  if (months < 12) {
+    return remainingDays > 0
+      ? `${months} m ${remainingDays} d`
+      : `${months} m`;
+  }
+
+  const years = Math.floor(months / 12);
+  const remainingMonths = months % 12;
+
+  if (remainingMonths > 0) {
+    return `${years} a ${remainingMonths} m`;
+  }
+
+  return `${years} a`;
 }
 
 export function buildTimelineEventCards(events: EventWithRelations[]): TimelineEventCard[] {
@@ -297,6 +367,86 @@ export function buildTimelineRange(events: TimelineEventCard[]): TimelineRange |
     endMs,
     durationMs: endMs - startMs,
   };
+}
+
+export function collapseTimelineGaps(
+  events: TimelineEventCard[],
+  scale: TimelineScale,
+  thresholdMultiplier = 2,
+): {
+  compressedEvents: TimelineEventCard[];
+  gapBreaks: TimelineGapBreak[];
+  compressedRange: TimelineRange;
+} {
+  if (events.length < 2) {
+    const range = buildTimelineRange(events);
+    return { compressedEvents: events, gapBreaks: [], compressedRange: range ?? { startMs: 0, endMs: MINIMUM_RANGE_MS, durationMs: MINIMUM_RANGE_MS } };
+  }
+
+  const { unitMs } = getTimelineScaleConfig(scale);
+  const threshold = thresholdMultiplier * unitMs;
+
+  const sorted = [...events].sort(
+    (a, b) => getEventStartMs(a) - getEventStartMs(b),
+  );
+
+  const gapBreaks: TimelineGapBreak[] = [];
+  let cumulativeGapMs = 0;
+
+  const compressedWithGaps: { event: TimelineEventCard; compressedEndMs: number; gapAfter?: { gapMs: number; label: string } }[] = [];
+
+  for (let i = 0; i < sorted.length; i++) {
+    const event = sorted[i];
+    const startMs = getEventStartMs(event);
+    const endMs = getEventEndMs(event);
+
+    const compressedStart = startMs - cumulativeGapMs;
+    const compressedEnd = endMs - cumulativeGapMs;
+
+    let gapAfter: { gapMs: number; label: string } | undefined;
+
+    if (i < sorted.length - 1) {
+      const nextStartMs = getEventStartMs(sorted[i + 1]);
+      const nextGapMs = nextStartMs - endMs;
+
+      if (nextGapMs > threshold) {
+        gapAfter = { gapMs: nextGapMs, label: formatGapLabel(Math.round(nextGapMs / 60000)) };
+        cumulativeGapMs += nextGapMs;
+      }
+    }
+
+    compressedWithGaps.push({
+      event: {
+        ...event,
+        internalStartIso: new Date(compressedStart).toISOString(),
+        internalEndIso: new Date(compressedEnd).toISOString(),
+      },
+      compressedEndMs: compressedEnd,
+      gapAfter,
+    });
+  }
+
+  const compressedEvents = compressedWithGaps.map((item) => item.event);
+  const compressedRange = buildTimelineRange(compressedEvents)!;
+  const totalDuration = compressedRange.durationMs || 1;
+
+  for (const item of compressedWithGaps) {
+    if (item.gapAfter) {
+      const afterMs = item.compressedEndMs;
+      const beforeMs = afterMs + item.gapAfter.gapMs;
+      const breakStartPercent = ((afterMs - compressedRange.startMs) / totalDuration) * 100;
+      const breakEndPercent = ((beforeMs - compressedRange.startMs) / totalDuration) * 100;
+
+      gapBreaks.push({
+        startPercent: Math.max(0, Math.min(100, breakStartPercent)),
+        endPercent: Math.max(0, Math.min(100, breakEndPercent)),
+        gapMs: item.gapAfter.gapMs,
+        label: item.gapAfter.label,
+      });
+    }
+  }
+
+  return { compressedEvents, gapBreaks, compressedRange };
 }
 
 export function getTimelineWidth(range: TimelineRange, scale: TimelineScale) {

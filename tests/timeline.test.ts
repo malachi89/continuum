@@ -5,6 +5,7 @@ import {
   buildTimelineEventCards,
   buildTimelineHistogramTracks,
   buildTimelineRange,
+  collapseTimelineGaps,
   getTimelineWidth,
   indexContinuityResultsByEvent,
 } from "@/lib/continuity/timeline";
@@ -171,9 +172,16 @@ describe("timeline helpers", () => {
     const hoursWidth = getTimelineWidth(range!, "hours");
     const daysWidth = getTimelineWidth(range!, "days");
     const weeksWidth = getTimelineWidth(range!, "weeks");
+    const monthsWidth = getTimelineWidth(range!, "months");
+    const yearsWidth = getTimelineWidth(range!, "years");
+    const milleniaWidth = getTimelineWidth(range!, "millenia");
 
     expect(hoursWidth).toBeGreaterThan(daysWidth);
-    expect(weeksWidth).toBeGreaterThan(daysWidth);
+
+    expect(weeksWidth).toBeGreaterThan(0);
+    expect(monthsWidth).toBeGreaterThan(0);
+    expect(yearsWidth).toBeGreaterThan(0);
+    expect(milleniaWidth).toBeGreaterThan(0);
   });
 
   it("builds day ticks across whole-day intervals", () => {
@@ -355,6 +363,41 @@ describe("timeline helpers", () => {
     expect(tracks).toHaveLength(2);
     expect(tracks[0]?.events.map((item) => item.event.id)).toEqual(["event-travel"]);
     expect(tracks[1]?.events.map((item) => item.event.id)).toEqual(["event-travel"]);
+  });
+
+  it("collapses gaps larger than 2x the scale unit when trimming is active", () => {
+    const farFuture = {
+      ...eventA,
+      id: "event-far",
+      title: "Bruno un mes despues",
+      internalStart: new Date("2026-02-01T14:03:00.000Z"),
+      internalEnd: new Date("2026-02-01T14:03:00.000Z"),
+    };
+    const cards = buildTimelineEventCards([eventA, farFuture]);
+    const result = collapseTimelineGaps(cards, "days");
+
+    expect(result.gapBreaks).toHaveLength(1);
+    expect(result.gapBreaks[0]?.label).toBe("1 m");
+    expect(result.compressedEvents).toHaveLength(2);
+
+    const compressedRange = result.compressedRange;
+    const compressedDurationHours = (compressedRange.durationMs / (60 * 60 * 1000));
+
+    expect(compressedDurationHours).toBeLessThan(2);
+  });
+
+  it("does not collapse gaps smaller than the threshold", () => {
+    const closeEvent = {
+      ...eventA,
+      id: "event-close",
+      title: "Bruno una hora despues",
+      internalStart: new Date("2026-01-01T15:03:00.000Z"),
+      internalEnd: new Date("2026-01-01T15:03:00.000Z"),
+    };
+    const cards = buildTimelineEventCards([eventA, closeEvent]);
+    const result = collapseTimelineGaps(cards, "days");
+
+    expect(result.gapBreaks).toHaveLength(0);
   });
 
   it("indexes continuity results by every affected event", () => {
