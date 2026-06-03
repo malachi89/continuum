@@ -74,6 +74,10 @@ model Project {
   characters  Character[]
   locations   Location[]
   events      Event[]
+  props       Prop[]
+  makeupItems Makeup[]
+  wardrobeItems Wardrobe[]
+  hairstyleItems Hairstyle[]
 
   @@index([ownerId])
 }
@@ -127,6 +131,7 @@ model Event {
   startLocation    Location?        @relation("EventStartLocation", fields: [startLocationId], references: [id], onDelete: SetNull)
   endLocation      Location?        @relation("EventEndLocation", fields: [endLocationId], references: [id], onDelete: SetNull)
   characters       EventCharacter[]
+  sceneProps       EventProp[]
 
   @@index([projectId])
   @@index([internalStart])
@@ -139,7 +144,133 @@ model EventCharacter {
   characterId String
   event       Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
   character   Character @relation(fields: [characterId], references: [id], onDelete: Cascade)
+  propAssignments EventCharacterProp[]
+  makeupAssignments EventCharacterMakeup[]
+  wardrobeAssignments EventCharacterWardrobe[]
+  hairstyleAssignments EventCharacterHairstyle[]
 
   @@id([eventId, characterId])
+  @@index([characterId])
+}
+
+model Prop {
+  id          String     @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  category    String?
+  imageUrl    String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  eventAssignments EventProp[]
+  characterAssignments EventCharacterProp[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EventProp {
+  eventId String
+  propId  String
+  notes   String?
+  event   Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  prop    Prop    @relation(fields: [propId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, propId])
+  @@index([propId])
+}
+
+model EventCharacterProp {
+  eventId     String
+  characterId String
+  propId      String
+  notes       String?
+  eventCharacter EventCharacter @relation(fields: [eventId, characterId], references: [eventId, characterId], onDelete: Cascade)
+  prop           Prop           @relation(fields: [propId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, characterId, propId])
+  @@index([characterId])
+  @@index([propId])
+}
+
+model Makeup {
+  id          String     @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignments EventCharacterMakeup[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EventCharacterMakeup {
+  eventId     String
+  characterId String
+  makeupId    String
+  notes       String?
+  eventCharacter EventCharacter @relation(fields: [eventId, characterId], references: [eventId, characterId], onDelete: Cascade)
+  makeup         Makeup         @relation(fields: [makeupId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, characterId, makeupId])
+  @@index([makeupId])
+  @@index([characterId])
+}
+
+model Wardrobe {
+  id          String     @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignments EventCharacterWardrobe[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EventCharacterWardrobe {
+  eventId     String
+  characterId String
+  wardrobeId  String
+  notes       String?
+  eventCharacter EventCharacter @relation(fields: [eventId, characterId], references: [eventId, characterId], onDelete: Cascade)
+  wardrobe       Wardrobe       @relation(fields: [wardrobeId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, characterId, wardrobeId])
+  @@index([wardrobeId])
+  @@index([characterId])
+}
+
+model Hairstyle {
+  id          String     @id @default(cuid())
+  projectId   String
+  name        String
+  description String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  assignments EventCharacterHairstyle[]
+
+  @@unique([projectId, name])
+  @@index([projectId])
+}
+
+model EventCharacterHairstyle {
+  eventId     String
+  characterId String
+  hairstyleId String
+  notes       String?
+  eventCharacter EventCharacter @relation(fields: [eventId, characterId], references: [eventId, characterId], onDelete: Cascade)
+  hairstyle     Hairstyle       @relation(fields: [hairstyleId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, characterId, hairstyleId])
+  @@index([hairstyleId])
   @@index([characterId])
 }

@@ -928,6 +928,10 @@ export async function importProjectJsonAction(
       const locationIdMap = new Map<string, string>();
       const characterIdMap = new Map<string, string>();
       const eventIdMap = new Map<string, string>();
+      const propIdMap = new Map<string, string>();
+      const makeupIdMap = new Map<string, string>();
+      const wardrobeIdMap = new Map<string, string>();
+      const hairstyleIdMap = new Map<string, string>();
 
       for (const location of bundle.locations) {
         const created = await tx.location.create({
@@ -948,16 +952,16 @@ export async function importProjectJsonAction(
 
       for (const character of bundle.characters) {
         const created = await tx.character.create({
-        data: {
-          projectId: project.id,
-          name: character.name,
-          alias: character.alias ?? null,
-          description: character.description ?? null,
-          notes: character.notes ?? null,
-          color: character.color,
-          status: character.status as CharacterStatus,
-          statusDateInternal: character.statusDateInternal
-            ? new Date(character.statusDateInternal)
+          data: {
+            projectId: project.id,
+            name: character.name,
+            alias: character.alias ?? null,
+            description: character.description ?? null,
+            notes: character.notes ?? null,
+            color: character.color,
+            status: character.status as CharacterStatus,
+            statusDateInternal: character.statusDateInternal
+              ? new Date(character.statusDateInternal)
               : null,
           },
           select: { id: true },
@@ -991,6 +995,60 @@ export async function importProjectJsonAction(
         eventIdMap.set(event.id, created.id);
       }
 
+      for (const prop of bundle.props) {
+        const created = await tx.prop.create({
+          data: {
+            projectId: project.id,
+            name: prop.name,
+            description: prop.description ?? null,
+            category: prop.category ?? null,
+            imageUrl: prop.imageUrl ?? null,
+          },
+          select: { id: true },
+        });
+
+        propIdMap.set(prop.id, created.id);
+      }
+
+      for (const item of bundle.makeup) {
+        const created = await tx.makeup.create({
+          data: {
+            projectId: project.id,
+            name: item.name,
+            description: item.description ?? null,
+          },
+          select: { id: true },
+        });
+
+        makeupIdMap.set(item.id, created.id);
+      }
+
+      for (const item of bundle.wardrobe) {
+        const created = await tx.wardrobe.create({
+          data: {
+            projectId: project.id,
+            name: item.name,
+            description: item.description ?? null,
+          },
+          select: { id: true },
+        });
+
+        wardrobeIdMap.set(item.id, created.id);
+      }
+
+      for (const item of bundle.hairstyles) {
+        const created = await tx.hairstyle.create({
+          data: {
+            projectId: project.id,
+            name: item.name,
+            description: item.description ?? null,
+          },
+          select: { id: true },
+        });
+
+        hairstyleIdMap.set(item.id, created.id);
+      }
+
       for (const link of bundle.eventCharacters) {
         const mappedEventId = eventIdMap.get(link.eventId);
         const mappedCharacterId = characterIdMap.get(link.characterId);
@@ -1010,6 +1068,148 @@ export async function importProjectJsonAction(
           create: {
             eventId: mappedEventId,
             characterId: mappedCharacterId,
+          },
+        });
+      }
+
+      for (const assignment of bundle.eventProps) {
+        const mappedEventId = eventIdMap.get(assignment.eventId);
+        const mappedPropId = propIdMap.get(assignment.propId);
+
+        if (!mappedEventId || !mappedPropId) {
+          continue;
+        }
+
+        await tx.eventProp.upsert({
+          where: {
+            eventId_propId: {
+              eventId: mappedEventId,
+              propId: mappedPropId,
+            },
+          },
+          update: {
+            notes: assignment.notes ?? null,
+          },
+          create: {
+            eventId: mappedEventId,
+            propId: mappedPropId,
+            notes: assignment.notes ?? null,
+          },
+        });
+      }
+
+      for (const assignment of bundle.eventCharacterProps) {
+        const mappedEventId = eventIdMap.get(assignment.eventId);
+        const mappedCharacterId = characterIdMap.get(assignment.characterId);
+        const mappedPropId = propIdMap.get(assignment.propId);
+
+        if (!mappedEventId || !mappedCharacterId || !mappedPropId) {
+          continue;
+        }
+
+        await tx.eventCharacterProp.upsert({
+          where: {
+            eventId_characterId_propId: {
+              eventId: mappedEventId,
+              characterId: mappedCharacterId,
+              propId: mappedPropId,
+            },
+          },
+          update: {
+            notes: assignment.notes ?? null,
+          },
+          create: {
+            eventId: mappedEventId,
+            characterId: mappedCharacterId,
+            propId: mappedPropId,
+            notes: assignment.notes ?? null,
+          },
+        });
+      }
+
+      for (const assignment of bundle.eventCharacterMakeup) {
+        const mappedEventId = eventIdMap.get(assignment.eventId);
+        const mappedCharacterId = characterIdMap.get(assignment.characterId);
+        const mappedMakeupId = makeupIdMap.get(assignment.makeupId);
+
+        if (!mappedEventId || !mappedCharacterId || !mappedMakeupId) {
+          continue;
+        }
+
+        await tx.eventCharacterMakeup.upsert({
+          where: {
+            eventId_characterId_makeupId: {
+              eventId: mappedEventId,
+              characterId: mappedCharacterId,
+              makeupId: mappedMakeupId,
+            },
+          },
+          update: {
+            notes: assignment.notes ?? null,
+          },
+          create: {
+            eventId: mappedEventId,
+            characterId: mappedCharacterId,
+            makeupId: mappedMakeupId,
+            notes: assignment.notes ?? null,
+          },
+        });
+      }
+
+      for (const assignment of bundle.eventCharacterWardrobe) {
+        const mappedEventId = eventIdMap.get(assignment.eventId);
+        const mappedCharacterId = characterIdMap.get(assignment.characterId);
+        const mappedWardrobeId = wardrobeIdMap.get(assignment.wardrobeId);
+
+        if (!mappedEventId || !mappedCharacterId || !mappedWardrobeId) {
+          continue;
+        }
+
+        await tx.eventCharacterWardrobe.upsert({
+          where: {
+            eventId_characterId_wardrobeId: {
+              eventId: mappedEventId,
+              characterId: mappedCharacterId,
+              wardrobeId: mappedWardrobeId,
+            },
+          },
+          update: {
+            notes: assignment.notes ?? null,
+          },
+          create: {
+            eventId: mappedEventId,
+            characterId: mappedCharacterId,
+            wardrobeId: mappedWardrobeId,
+            notes: assignment.notes ?? null,
+          },
+        });
+      }
+
+      for (const assignment of bundle.eventCharacterHairstyles) {
+        const mappedEventId = eventIdMap.get(assignment.eventId);
+        const mappedCharacterId = characterIdMap.get(assignment.characterId);
+        const mappedHairstyleId = hairstyleIdMap.get(assignment.hairstyleId);
+
+        if (!mappedEventId || !mappedCharacterId || !mappedHairstyleId) {
+          continue;
+        }
+
+        await tx.eventCharacterHairstyle.upsert({
+          where: {
+            eventId_characterId_hairstyleId: {
+              eventId: mappedEventId,
+              characterId: mappedCharacterId,
+              hairstyleId: mappedHairstyleId,
+            },
+          },
+          update: {
+            notes: assignment.notes ?? null,
+          },
+          create: {
+            eventId: mappedEventId,
+            characterId: mappedCharacterId,
+            hairstyleId: mappedHairstyleId,
+            notes: assignment.notes ?? null,
           },
         });
       }

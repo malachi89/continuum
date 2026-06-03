@@ -15,6 +15,7 @@ const projectScopedRoutes = new Map<string, string>([
   ["/characters", "/characters"],
   ["/locations", "/locations"],
   ["/events", "/events"],
+  ["/production", "/production"],
   ["/timeline", "/timeline"],
   ["/analysis", "/analysis"],
 ]);

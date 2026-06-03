@@ -16,6 +16,7 @@ export const projectSectionLinks = [
   { href: "/characters", labelKey: "characters" },
   { href: "/locations", labelKey: "locations" },
   { href: "/events", labelKey: "events" },
+  { href: "/production", labelKey: "production" },
   { href: "/timeline", labelKey: "timeline" },
   { href: "/analysis", labelKey: "analysis" },
 ] as const;

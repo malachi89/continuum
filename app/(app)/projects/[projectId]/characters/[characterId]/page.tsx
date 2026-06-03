@@ -10,6 +10,7 @@ import { EmptyState } from "@/components/ui/EmptyState";
 import { getOwnedCharacterTimeline } from "@/lib/continuity/data";
 import { buildCharacterTracking } from "@/lib/continuity/timeline";
 import { getServerLanguage } from "@/lib/i18n/server";
+import { getOwnedCharacterProductionTimeline } from "@/lib/production/queries";
 
 const copy = {
   es: {
@@ -41,6 +42,9 @@ const copy = {
     relevantSignals: "Señales relevantes para este personaje",
     noConflicts:
       "No detectamos conflictos visibles en la secuencia actual de este personaje.",
+    production: "Produccion",
+    productionByEvent: "Estado visual por evento",
+    noProduction: "Sin props ni MVP registrados para este personaje.",
     warning: "Advertencia",
     info: "Información",
     alias: "Sin alias",
@@ -75,6 +79,9 @@ const copy = {
     relevantSignals: "Relevant signals for this character",
     noConflicts:
       "We did not detect visible conflicts in this character's current sequence.",
+    production: "Production",
+    productionByEvent: "Visual state by event",
+    noProduction: "No props or MVP recorded for this character.",
     warning: "Warning",
     info: "Info",
     alias: "No alias",
@@ -103,7 +110,10 @@ export default async function CharacterTrackingPage({
   params: Promise<{ projectId: string; characterId: string }>;
 }) {
   const { projectId, characterId } = await params;
-  const { character, events } = await getOwnedCharacterTimeline(projectId, characterId);
+  const [{ character, events }, productionTimeline] = await Promise.all([
+    getOwnedCharacterTimeline(projectId, characterId),
+    getOwnedCharacterProductionTimeline(projectId, characterId),
+  ]);
   const language = await getServerLanguage();
   const text = copy[language];
   const { timeline, conflicts } = buildCharacterTracking(events, language);
@@ -301,6 +311,58 @@ export default async function CharacterTrackingPage({
                 ))}
               </div>
             )}
+          </section>
+
+          <section className="rounded-[28px] border border-line bg-surface p-6">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <p className="font-mono text-xs uppercase tracking-[0.3em] text-muted">
+                  {text.production}
+                </p>
+                <h3 className="mt-2 text-xl font-semibold">{text.productionByEvent}</h3>
+              </div>
+              <Badge>{productionTimeline.length}</Badge>
+            </div>
+
+            <div className="mt-5 space-y-4">
+              {productionTimeline.every(
+                (item) =>
+                  item.propAssignments.length === 0 &&
+                  item.makeupAssignments.length === 0 &&
+                  item.wardrobeAssignments.length === 0 &&
+                  item.hairstyleAssignments.length === 0,
+              ) ? (
+                <p className="text-sm text-muted">{text.noProduction}</p>
+              ) : (
+                productionTimeline.map((item) => (
+                  <article key={item.eventId} className="rounded-[24px] border border-line bg-canvas/55 p-4">
+                    <div className="flex flex-wrap items-start justify-between gap-3">
+                      <div>
+                        <h4 className="font-semibold">{item.event.title}</h4>
+                        <p className="mt-1 text-sm text-muted">
+                          {formatOptionalDate(item.event.internalStart, language, text.noDate)} {"->"}{" "}
+                          {formatOptionalDate(item.event.internalEnd, language, text.noDate)}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {item.propAssignments.map((assignment) => (
+                        <Badge key={`prop-${assignment.propId}`}>{assignment.prop.name}</Badge>
+                      ))}
+                      {item.makeupAssignments.map((assignment) => (
+                        <Badge key={`makeup-${assignment.makeupId}`}>{assignment.makeup.name}</Badge>
+                      ))}
+                      {item.wardrobeAssignments.map((assignment) => (
+                        <Badge key={`wardrobe-${assignment.wardrobeId}`}>{assignment.wardrobe.name}</Badge>
+                      ))}
+                      {item.hairstyleAssignments.map((assignment) => (
+                        <Badge key={`hairstyle-${assignment.hairstyleId}`}>{assignment.hairstyle.name}</Badge>
+                      ))}
+                    </div>
+                  </article>
+                ))
+              )}
+            </div>
           </section>
         </>
       )}

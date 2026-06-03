@@ -28,6 +28,11 @@ export const navigationItems: NavigationItem[] = [
     descriptionKey: "eventsDescription",
   },
   {
+    href: "/production",
+    labelKey: "production",
+    descriptionKey: "productionDescription",
+  },
+  {
     href: "/timeline",
     labelKey: "timeline",
     descriptionKey: "timelineDescription",

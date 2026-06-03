@@ -36,6 +36,7 @@ export function ProjectRoutePicker({
     | "/characters"
     | "/locations"
     | "/events"
+    | "/production"
     | "/timeline"
     | "/analysis"
     | "/import-export";

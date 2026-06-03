@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { Badge } from "@/components/ui/Badge";
+import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getOwnedProject } from "@/lib/continuity/data";
 import { getServerLanguage } from "@/lib/i18n/server";
 
@@ -68,6 +69,8 @@ export default async function ProjectLayout({
         </div>
 
       </section>
+
+      <ProjectWorkspaceNav projectId={projectId} />
 
       {children}
     </div>

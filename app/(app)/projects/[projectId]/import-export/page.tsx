@@ -8,7 +8,7 @@ const copy = {
     export: "Exportar",
     title: "Paquete JSON portable",
     description:
-      "Este bloque contiene proyecto, personajes, locaciones, eventos y relaciones evento-personaje del proyecto actual.",
+      "Este bloque contiene proyecto, personajes, locaciones, eventos, relaciones evento-personaje y datos de produccion del proyecto actual.",
     import: "Importar",
     importTitle: "Crear copia nueva",
     importDescription:
@@ -21,7 +21,7 @@ const copy = {
     export: "Export",
     title: "Portable JSON bundle",
     description:
-      "This block includes the current project's project record, characters, locations, events, and event-character links.",
+      "This block includes the current project's project record, characters, locations, events, event-character links, and production data.",
     import: "Import",
     importTitle: "Create a new copy",
     importDescription:

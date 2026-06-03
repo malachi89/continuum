@@ -17,6 +17,7 @@ const copy = {
   es: {
     event: "Evento",
     back: "Volver a eventos",
+    production: "Produccion",
     detail: "Detalle",
     sheet: "Ficha del evento",
     description: "Descripcion",
@@ -40,6 +41,7 @@ const copy = {
   en: {
     event: "Event",
     back: "Back to events",
+    production: "Production",
     detail: "Detail",
     sheet: "Event sheet",
     description: "Description",
@@ -111,12 +113,20 @@ export default async function ProjectEventDetailPage({
         </div>
 
         <div className="mt-5">
-          <Link
-            href={eventsPath}
-            className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
-          >
-            {text.back}
-          </Link>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              href={eventsPath}
+              className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
+            >
+              {text.back}
+            </Link>
+            <Link
+              href={`/projects/${projectId}/events/${eventId}/production`}
+              className="inline-flex items-center justify-center rounded-full border border-line bg-canvas/70 px-4 py-2.5 text-sm font-semibold text-ink transition hover:border-accent hover:bg-surface"
+            >
+              {text.production}
+            </Link>
+          </div>
         </div>
       </section>
 

@@ -50,6 +50,75 @@ export const continuityImportSchema = z.object({
       characterId: z.string().min(1),
     }),
   ),
+  props: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().nullable().optional(),
+      category: z.string().nullable().optional(),
+      imageUrl: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  eventProps: z.array(
+    z.object({
+      eventId: z.string().min(1),
+      propId: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  eventCharacterProps: z.array(
+    z.object({
+      eventId: z.string().min(1),
+      characterId: z.string().min(1),
+      propId: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  makeup: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  wardrobe: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  hairstyles: z.array(
+    z.object({
+      id: z.string().min(1),
+      name: z.string().min(1),
+      description: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  eventCharacterMakeup: z.array(
+    z.object({
+      eventId: z.string().min(1),
+      characterId: z.string().min(1),
+      makeupId: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  eventCharacterWardrobe: z.array(
+    z.object({
+      eventId: z.string().min(1),
+      characterId: z.string().min(1),
+      wardrobeId: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }),
+  ).default([]),
+  eventCharacterHairstyles: z.array(
+    z.object({
+      eventId: z.string().min(1),
+      characterId: z.string().min(1),
+      hairstyleId: z.string().min(1),
+      notes: z.string().nullable().optional(),
+    }),
+  ).default([]),
 });
 
 export type ContinuityImportBundle = z.infer<typeof continuityImportSchema>;

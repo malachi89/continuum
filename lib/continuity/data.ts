@@ -263,6 +263,18 @@ export async function getOwnedAnalyzableProject(projectId: string): Promise<Anal
       characters: {
         orderBy: { name: "asc" },
       },
+      props: {
+        orderBy: { name: "asc" },
+      },
+      makeupItems: {
+        orderBy: { name: "asc" },
+      },
+      wardrobeItems: {
+        orderBy: { name: "asc" },
+      },
+      hairstyleItems: {
+        orderBy: { name: "asc" },
+      },
       locations: {
         orderBy: { name: "asc" },
       },
@@ -332,6 +344,18 @@ export async function getOwnedProjectExportBundle(
       characters: {
         orderBy: { name: "asc" },
       },
+      props: {
+        orderBy: { name: "asc" },
+      },
+      makeupItems: {
+        orderBy: { name: "asc" },
+      },
+      wardrobeItems: {
+        orderBy: { name: "asc" },
+      },
+      hairstyleItems: {
+        orderBy: { name: "asc" },
+      },
       locations: {
         orderBy: { name: "asc" },
       },
@@ -353,6 +377,58 @@ export async function getOwnedProjectExportBundle(
     },
     orderBy: [{ eventId: "asc" }, { characterId: "asc" }],
   });
+
+  const [eventProps, eventCharacterProps, eventCharacterMakeup, eventCharacterWardrobe, eventCharacterHairstyles] =
+    await Promise.all([
+      prisma.eventProp.findMany({
+        where: {
+          event: {
+            projectId,
+          },
+        },
+        orderBy: [{ eventId: "asc" }, { propId: "asc" }],
+      }),
+      prisma.eventCharacterProp.findMany({
+        where: {
+          eventCharacter: {
+            event: {
+              projectId,
+            },
+          },
+        },
+        orderBy: [{ eventId: "asc" }, { characterId: "asc" }, { propId: "asc" }],
+      }),
+      prisma.eventCharacterMakeup.findMany({
+        where: {
+          eventCharacter: {
+            event: {
+              projectId,
+            },
+          },
+        },
+        orderBy: [{ eventId: "asc" }, { characterId: "asc" }, { makeupId: "asc" }],
+      }),
+      prisma.eventCharacterWardrobe.findMany({
+        where: {
+          eventCharacter: {
+            event: {
+              projectId,
+            },
+          },
+        },
+        orderBy: [{ eventId: "asc" }, { characterId: "asc" }, { wardrobeId: "asc" }],
+      }),
+      prisma.eventCharacterHairstyle.findMany({
+        where: {
+          eventCharacter: {
+            event: {
+              projectId,
+            },
+          },
+        },
+        orderBy: [{ eventId: "asc" }, { characterId: "asc" }, { hairstyleId: "asc" }],
+      }),
+    ]);
 
   return {
     project: {
@@ -395,6 +471,57 @@ export async function getOwnedProjectExportBundle(
     eventCharacters: eventCharacters.map((link) => ({
       eventId: link.eventId,
       characterId: link.characterId,
+    })),
+    props: project.props.map((prop) => ({
+      id: prop.id,
+      name: prop.name,
+      description: prop.description,
+      category: prop.category,
+      imageUrl: prop.imageUrl,
+    })),
+    eventProps: eventProps.map((assignment) => ({
+      eventId: assignment.eventId,
+      propId: assignment.propId,
+      notes: assignment.notes,
+    })),
+    eventCharacterProps: eventCharacterProps.map((assignment) => ({
+      eventId: assignment.eventId,
+      characterId: assignment.characterId,
+      propId: assignment.propId,
+      notes: assignment.notes,
+    })),
+    makeup: project.makeupItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+    })),
+    wardrobe: project.wardrobeItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+    })),
+    hairstyles: project.hairstyleItems.map((item) => ({
+      id: item.id,
+      name: item.name,
+      description: item.description,
+    })),
+    eventCharacterMakeup: eventCharacterMakeup.map((assignment) => ({
+      eventId: assignment.eventId,
+      characterId: assignment.characterId,
+      makeupId: assignment.makeupId,
+      notes: assignment.notes,
+    })),
+    eventCharacterWardrobe: eventCharacterWardrobe.map((assignment) => ({
+      eventId: assignment.eventId,
+      characterId: assignment.characterId,
+      wardrobeId: assignment.wardrobeId,
+      notes: assignment.notes,
+    })),
+    eventCharacterHairstyles: eventCharacterHairstyles.map((assignment) => ({
+      eventId: assignment.eventId,
+      characterId: assignment.characterId,
+      hairstyleId: assignment.hairstyleId,
+      notes: assignment.notes,
     })),
   };
 }
