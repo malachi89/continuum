@@ -4,6 +4,7 @@ import clsx from "clsx";
 import { AlertTriangle, ArrowUpRight, CircleAlert } from "lucide-react";
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type {
   TimelineBoardMode,
   TimelineScale,
@@ -39,12 +40,12 @@ type SortMode = "chronological" | "narrative";
 const TRACK_LABEL_WIDTH = 220;
 const TRACK_CARD_HEIGHT = 168;
 const TRACK_CARD_MIN_WIDTH_BY_SCALE: Record<TimelineScale, number> = {
-  hours: 256,
-  days: 256,
-  weeks: 208,
-  months: 192,
-  years: 176,
-  millenia: 160,
+  hours: 280,
+  days: 280,
+  weeks: 256,
+  months: 240,
+  years: 224,
+  millenia: 200,
 };
 const TRACK_LANE_GAP = 12;
 const TRACK_VERTICAL_PADDING = 12;
@@ -221,31 +222,11 @@ function getMinimumLaneDurationMs(
 const VALID_SCALES: TimelineScale[] = ["hours", "days", "weeks", "months", "years", "millenia"];
 
 function getInitialTimelineScale(): TimelineScale {
-  if (typeof window === "undefined") {
-    return "hours";
-  }
-
-  const storedScale = window.localStorage.getItem(TIMELINE_SCALE_STORAGE_KEY);
-
-  if (VALID_SCALES.includes(storedScale as TimelineScale)) {
-    return storedScale as TimelineScale;
-  }
-
   return "hours";
 }
 
 function getInitialGapTrimming(): boolean {
-  if (typeof window === "undefined") {
-    return true;
-  }
-
-  const stored = window.localStorage.getItem(TIMELINE_GAP_TRIMMING_KEY);
-
-  if (stored === null) {
-    return true;
-  }
-
-  return stored === "true";
+  return true;
 }
 
 function ContinuityMarker({ results }: { results: ContinuityResult[] }) {
@@ -344,6 +325,7 @@ function HistogramEventBlock({
   text,
   zIndex,
   onBringToFront,
+  onSelect,
 }: {
   item: TimelineHistogramItem;
   projectId: string;
@@ -353,12 +335,16 @@ function HistogramEventBlock({
   text: TimelineCopy;
   zIndex: number;
   onBringToFront: (eventId: string) => void;
+  onSelect: (event: TimelineEventCard) => void;
 }) {
   const event = item.event;
 
   return (
     <article
-      onClick={() => onBringToFront(event.id)}
+      onClick={() => {
+        onBringToFront(event.id);
+        onSelect(event);
+      }}
       style={{
         left: `${item.offsetPercent}%`,
         top: `${getTrackLaneTop(item.laneIndex)}px`,
@@ -411,6 +397,122 @@ function HistogramEventBlock({
   );
 }
 
+function EventPopup({
+  event,
+  projectId,
+  onClose,
+  text,
+  locale,
+}: {
+  event: TimelineEventCard;
+  projectId: string;
+  onClose: () => void;
+  text: TimelineCopy;
+  locale: string;
+}) {
+  useEffect(() => {
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50"
+      onClick={onClose}
+    >
+      <div
+        className="fixed left-1/2 top-1/2 w-96 max-w-[calc(100vw-2rem)] -translate-x-1/2 -translate-y-1/2 rounded-[28px] border border-line bg-surface p-6 shadow-[0_18px_50px_rgba(91,71,36,0.18)]"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge tone="accent">{event.eventType}</Badge>
+              {event.chapterOrEpisode ? <Badge>{event.chapterOrEpisode}</Badge> : null}
+              {event.narrativeOrder !== null ? (
+                <Badge tone="success">#{event.narrativeOrder}</Badge>
+              ) : null}
+            </div>
+            <h3 className="mt-2 text-lg font-semibold text-ink">{event.title}</h3>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-line text-muted transition hover:border-accent hover:text-accent"
+            aria-label="Cerrar"
+          >
+            ✕
+          </button>
+        </div>
+
+        <div className="mt-4 space-y-3">
+          {event.description ? (
+            <p className="text-sm leading-6 text-ink">{event.description}</p>
+          ) : null}
+
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">
+                {text.startLabel}
+              </p>
+              <p className="mt-1 text-ink">{formatEventDate(event.internalStartIso, locale)}</p>
+            </div>
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">
+                {text.endLabel}
+              </p>
+              <p className="mt-1 text-ink">{formatEventDate(event.internalEndIso, locale)}</p>
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">Lugar</p>
+            <p className="mt-1 text-sm text-ink">
+              {getLocationLabel(event, text.noLocation)}
+            </p>
+          </div>
+
+          {event.characters.length > 0 ? (
+            <div>
+              <p className="text-xs font-medium uppercase tracking-[0.1em] text-muted">Personajes</p>
+              <div className="mt-1 flex flex-wrap gap-1.5">
+                {event.characters.map((character) => (
+                  <Link
+                    key={character.id}
+                    href={`/projects/${projectId}/characters/${character.id}`}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-line bg-canvas/80 px-2.5 py-1 text-sm text-ink transition hover:border-accent"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <span
+                      className="h-2 w-2 shrink-0 rounded-full"
+                      style={{ backgroundColor: character.color }}
+                    />
+                    {character.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </div>
+
+        <div className="mt-5 flex justify-end">
+          <Link
+            href={`/projects/${projectId}/events/${event.id}`}
+            className="inline-flex items-center gap-1.5 rounded-full border border-accent bg-accent px-4 py-2 text-sm font-medium text-white transition hover:bg-accent-strong"
+            onClick={(e) => e.stopPropagation()}
+          >
+            Ver evento
+            <ArrowUpRight className="h-3.5 w-3.5" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function TimelineBoard({
   projectId,
   characters,
@@ -428,6 +530,7 @@ export function TimelineBoard({
   const [chapterFilter, setChapterFilter] = useState("all");
   const [gapTrimming, setGapTrimming] = useState(getInitialGapTrimming);
   const [eventZIndices, setEventZIndices] = useState<Map<string, number>>(new Map());
+  const [selectedEvent, setSelectedEvent] = useState<TimelineEventCard | null>(null);
   const zCounterRef = useRef(10);
   const timelineEvents = events;
 
@@ -439,6 +542,14 @@ export function TimelineBoard({
       next.set(eventId, newZIndex);
       return next;
     });
+  }, []);
+
+  const handleSelectEvent = useCallback((event: TimelineEventCard) => {
+    setSelectedEvent(event);
+  }, []);
+
+  const handleClosePopup = useCallback(() => {
+    setSelectedEvent(null);
   }, []);
 
   const chapterOptions = useMemo(() => {
@@ -570,6 +681,19 @@ export function TimelineBoard({
       timelineRef.current.scrollTop = 0;
     }
   }, [timelineScale]);
+
+  /* eslint-disable react-hooks/set-state-in-effect */
+  useEffect(() => {
+    const storedScale = window.localStorage.getItem(TIMELINE_SCALE_STORAGE_KEY);
+    if (VALID_SCALES.includes(storedScale as TimelineScale)) {
+      setTimelineScale(storedScale as TimelineScale);
+    }
+    const storedGap = window.localStorage.getItem(TIMELINE_GAP_TRIMMING_KEY);
+    if (storedGap !== null) {
+      setGapTrimming(storedGap === "true");
+    }
+  }, []);
+  /* eslint-enable react-hooks/set-state-in-effect */
 
   function handleTimelineScaleChange(nextScale: TimelineScale) {
     setTimelineScale(nextScale);
@@ -844,6 +968,7 @@ export function TimelineBoard({
                               text={text}
                               zIndex={eventZIndices.get(item.event.id) ?? 0}
                               onBringToFront={handleBringToFront}
+                              onSelect={handleSelectEvent}
                             />
                           ))}
                         </div>
@@ -857,6 +982,19 @@ export function TimelineBoard({
           </div>
         )}
       </section>
+
+      {selectedEvent && typeof window !== "undefined"
+        ? createPortal(
+            <EventPopup
+              event={selectedEvent}
+              projectId={projectId}
+              onClose={handleClosePopup}
+              text={text}
+              locale={language === "es" ? "es-MX" : "en-US"}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
